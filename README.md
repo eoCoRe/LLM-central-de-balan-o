@@ -1,73 +1,37 @@
-# React + TypeScript + Vite
+# Central de Balanços — Módulo de Revisão da Extração
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend do módulo de IA da Central de Balanços: a tela onde o analista de
+crédito revisa os valores que o LLM extraiu de um Balanço/DRE em PDF — com
+score de confiança e página de origem — antes de confirmá-los e enviá-los
+para a Tabulação (fluxo *human-in-the-loop*).
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- [Vite](https://vite.dev/)
+- [React](https://react.dev/) + TypeScript
+- [Tailwind CSS](https://tailwindcss.com/) v4
 
-## React Compiler
+## Estrutura
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+src/
+├── types/extraction.ts          # tipos do domínio (conta, valor, confiança, origem)
+├── utils/
+│   ├── confidence.ts            # regra de negócio do limiar de revisão humana
+│   └── formatCurrency.ts        # formatação de valores em milhares (pt-BR)
+├── data/mockExtractionData.ts   # dados mockados de uma extração
+├── components/
+│   ├── ui/                      # componentes genéricos (botão, badge de confiança)
+│   ├── layout/                  # Header, Sidebar, DashboardLayout
+│   └── extraction/               # componentes da tela de Revisão da Extração
+└── pages/ExtractionReviewPage.tsx
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Rodando localmente
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
+
+Acesse `http://localhost:5173`.
