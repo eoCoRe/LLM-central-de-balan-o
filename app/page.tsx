@@ -27,7 +27,7 @@ export default function Page() {
         {screen === "demonstracoes" && <DemonstracoesScreen />}
         {screen === "indices" && <IndicesScreen />}
         {screen === "opiniao-de-venda" && <OpiniaoDeVendaScreen />}
-        {screen === "extracao-ia" && <ExtracaoIaScreen />}
+        {screen === "extracao-ia" && <ExtracaoIaScreen onNavigate={setScreen} />}
       </main>
     </div>
   )

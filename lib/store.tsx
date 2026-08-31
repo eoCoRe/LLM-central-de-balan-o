@@ -117,6 +117,7 @@ interface StoreApi extends StoreData {
   addAccountNode: (parentCode: string | null, name: string, isGroup: boolean) => void
   renameAccountNode: (code: string, name: string) => void
   deleteAccountNode: (code: string) => void
+  confirmExtraction: (exercicioId: string, entries: { code: string; value: number }[], fileName: string) => void
   resetToSeed: () => void
 }
 
@@ -270,6 +271,27 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
     }))
   }, [audit])
 
+  const confirmExtraction = useCallback((exercicioId: string, entries: { code: string; value: number }[], fileName: string) => {
+    setData((prev) => {
+      let accounts = prev.accounts
+      for (const entry of entries) {
+        accounts = mapAccountTree(accounts, entry.code, (a) => ({
+          ...a,
+          values: { ...a.values, [exercicioId]: entry.value },
+        }))
+      }
+      return {
+        ...prev,
+        accounts,
+        auditLog: audit(
+          prev,
+          "Extração confirmada",
+          `${entries.length} conta(s) de "${fileName}" gravadas em ${exercicioId} (revisão humana concluída).`,
+        ),
+      }
+    })
+  }, [audit])
+
   const resetToSeed = useCallback(() => {
     setData(seedData())
   }, [])
@@ -286,6 +308,7 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
       addAccountNode,
       renameAccountNode,
       deleteAccountNode,
+      confirmExtraction,
       resetToSeed,
     }),
     [
@@ -299,6 +322,7 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
       addAccountNode,
       renameAccountNode,
       deleteAccountNode,
+      confirmExtraction,
       resetToSeed,
     ],
   )

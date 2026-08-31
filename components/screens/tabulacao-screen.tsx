@@ -199,7 +199,14 @@ export function TabulacaoScreen() {
               consistency === "pendente" && "border-border bg-muted/40",
             )}
           >
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            <p
+              className={cn(
+                "text-[11px] font-medium uppercase tracking-wider",
+                consistency === "ok" && "text-ok/80",
+                consistency === "risco" && "text-risk/80",
+                consistency === "pendente" && "text-muted-foreground",
+              )}
+            >
               Consistência Ativo × Passivo — {activeExercicioId}
             </p>
             <span
