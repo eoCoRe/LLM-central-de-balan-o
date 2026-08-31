@@ -4,9 +4,11 @@ const { prisma } = vi.hoisted(() => ({
   prisma: {
     conta: {
       findMany: vi.fn(),
-      findUniqueOrThrow: vi.fn(),
+      findUnique: vi.fn(),
       create: vi.fn(),
     },
+    empresa: { findFirst: vi.fn() },
+    auditLog: { create: vi.fn() },
   },
 }))
 
@@ -16,6 +18,7 @@ import { GET, POST } from "./route"
 
 beforeEach(() => {
   vi.clearAllMocks()
+  prisma.empresa.findFirst.mockResolvedValue({ id: 1 })
 })
 
 function buildRequest(body: unknown) {
@@ -66,7 +69,16 @@ describe("POST /api/plano-de-contas", () => {
     expect(prisma.conta.create).not.toHaveBeenCalled()
   })
 
-  it("cria um grupo raiz com o próximo código livre", async () => {
+  it("rejeita quando o pai informado não existe", async () => {
+    prisma.conta.findUnique.mockResolvedValueOnce(null)
+    const response = await POST(buildRequest({ parentId: 999, nome: "Subconta" }))
+    const body = await response.json()
+    expect(response.status).toBe(400)
+    expect(body.error).toMatch(/não encontrada/i)
+    expect(prisma.conta.create).not.toHaveBeenCalled()
+  })
+
+  it("cria um grupo raiz com o próximo código livre e registra auditoria", async () => {
     prisma.conta.findMany.mockResolvedValueOnce([{ codigo: "1" }, { codigo: "2" }])
     prisma.conta.create.mockResolvedValueOnce({ id: 10, codigo: "3", descricao: "Contas de Compensação" })
 
@@ -78,10 +90,13 @@ describe("POST /api/plano-de-contas", () => {
     expect(prisma.conta.create).toHaveBeenCalledWith({
       data: { codigo: "3", descricao: "Contas de Compensação", tipo: "BP", contaPaiId: null },
     })
+    expect(prisma.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ empresaId: 1, acao: "Conta criada" }) }),
+    )
   })
 
   it("cria uma subconta usando <código do pai>.<próximo n>", async () => {
-    prisma.conta.findUniqueOrThrow.mockResolvedValueOnce({ id: 1, codigo: "1" })
+    prisma.conta.findUnique.mockResolvedValueOnce({ id: 1, codigo: "1" })
     prisma.conta.findMany.mockResolvedValueOnce([{ codigo: "1.1" }])
     prisma.conta.create.mockResolvedValueOnce({ id: 11, codigo: "1.2", descricao: "Nova subconta" })
 

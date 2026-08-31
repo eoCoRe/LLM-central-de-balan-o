@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button"
 import { useFinancialStore } from "@/lib/store"
 import { flattenAccounts, formatBRL } from "@/lib/financial-data"
 import { generateMockExtraction, type ExtractedRow } from "@/lib/mock-extraction"
+import { validateUploadFile } from "@/lib/upload-validation"
 import { cn } from "@/lib/utils"
 
 type Stage = "idle" | "uploading" | "extracting" | "reviewing" | "done"
@@ -45,6 +46,7 @@ export function ExtracaoIaScreen({ onNavigate }: { onNavigate: (id: "tabulacao")
   const [rows, setRows] = useState<ReviewRow[]>([])
   const [exercicioId, setExercicioId] = useState<string>("")
   const [confirmedCount, setConfirmedCount] = useState(0)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const timeouts = useRef<ReturnType<typeof setTimeout>[]>([])
 
@@ -58,6 +60,12 @@ export function ExtracaoIaScreen({ onNavigate }: { onNavigate: (id: "tabulacao")
   const leafOptions = flattenAccounts(store.accounts).filter((r) => !r.account.children)
 
   function startExtraction(file: File) {
+    const validation = validateUploadFile(file)
+    if (!validation.ok) {
+      setUploadError(validation.error ?? "Arquivo inválido.")
+      return
+    }
+    setUploadError(null)
     setFileName(file.name)
     setStage("uploading")
     const lastExercicioId = store.exercicios[store.exercicios.length - 1]?.id
@@ -114,6 +122,7 @@ export function ExtracaoIaScreen({ onNavigate }: { onNavigate: (id: "tabulacao")
     setStage("idle")
     setFileName(null)
     setRows([])
+    setUploadError(null)
   }
 
   const mappedCount = rows.filter((r) => r.mappedCode).length
@@ -137,6 +146,17 @@ export function ExtracaoIaScreen({ onNavigate }: { onNavigate: (id: "tabulacao")
         {stage === "idle" && (
           <>
             <input ref={fileInputRef} type="file" accept=".pdf,.png,.jpg,.jpeg" className="hidden" onChange={handleFileChange} />
+
+            {uploadError && (
+              <div className="flex items-start gap-2.5 rounded-md border border-risk/30 bg-risk-muted px-4 py-3">
+                <AlertTriangle className="mt-0.5 size-4 shrink-0 text-risk" />
+                <div>
+                  <p className="text-sm font-medium text-risk">Não foi possível enviar o arquivo</p>
+                  <p className="text-xs text-risk/80">{uploadError}</p>
+                </div>
+              </div>
+            )}
+
             <div
               onDragOver={(e) => {
                 e.preventDefault()

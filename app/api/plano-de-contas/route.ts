@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
+import { getDefaultEmpresa } from "@/lib/server/empresa"
+import { logAudit } from "@/lib/server/audit"
+import { handleRouteError } from "@/lib/server/http"
+import { requireNonEmptyString, requirePositiveInt, ValidationError } from "@/lib/server/validation"
 
 interface ContaNode {
   id: number
@@ -43,18 +47,29 @@ export async function GET() {
 // `store.addAccountNode`, gerando o próximo código na mesma convenção
 // (raiz: "1", "2", ...; filha: "<pai>.<n>").
 export async function POST(request: Request) {
-  const body = await request.json()
-  const { parentId, nome } = body as { parentId: number | null; nome: string }
+  try {
+    const body = await request.json()
+    const { parentId: rawParentId, nome: rawNome } = body as { parentId: number | null; nome: unknown }
 
-  if (!nome || typeof nome !== "string" || !nome.trim()) {
-    return NextResponse.json({ error: "Nome é obrigatório." }, { status: 400 })
+    const nome = requireNonEmptyString(rawNome, "Nome")
+    const parentId = rawParentId === null || rawParentId === undefined ? null : requirePositiveInt(rawParentId, "parentId")
+
+    const codigo = await nextCodigo(parentId)
+    const conta = await prisma.conta.create({
+      data: { codigo, descricao: nome, tipo: "BP", contaPaiId: parentId },
+    })
+
+    const empresa = await getDefaultEmpresa()
+    await logAudit(
+      empresa.id,
+      "Conta criada",
+      parentId === null ? `Grupo raiz "${nome}" (${codigo}).` : `"${nome}" adicionada em ${codigo}.`,
+    )
+
+    return NextResponse.json(conta, { status: 201 })
+  } catch (error) {
+    return handleRouteError(error)
   }
-
-  const codigo = await nextCodigo(parentId)
-  const conta = await prisma.conta.create({
-    data: { codigo, descricao: nome.trim(), tipo: "BP", contaPaiId: parentId },
-  })
-  return NextResponse.json(conta, { status: 201 })
 }
 
 async function nextCodigo(parentId: number | null): Promise<string> {
@@ -66,7 +81,8 @@ async function nextCodigo(parentId: number | null): Promise<string> {
     return String(n)
   }
 
-  const parent = await prisma.conta.findUniqueOrThrow({ where: { id: parentId } })
+  const parent = await prisma.conta.findUnique({ where: { id: parentId } })
+  if (!parent) throw new ValidationError("Conta pai não encontrada.")
   const siblings = await prisma.conta.findMany({ where: { contaPaiId: parentId } })
   const used = new Set(siblings.map((s) => s.codigo))
   let n = 1

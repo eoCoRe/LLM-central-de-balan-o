@@ -30,6 +30,33 @@ describe("POST /api/extracoes", () => {
     expect(prisma.extracao.create).not.toHaveBeenCalled()
   })
 
+  it("rejeita itens vazio ou além do limite de 200", async () => {
+    const empty = await POST(buildRequest({ exercicioId: 1, arquivoOrigem: "a.pdf", itens: [] }))
+    expect(empty.status).toBe(400)
+
+    const tooMany = await POST(
+      buildRequest({
+        exercicioId: 1,
+        arquivoOrigem: "a.pdf",
+        itens: Array.from({ length: 201 }, () => ({ contaId: 1, valor: 10, confianca: 90 })),
+      }),
+    )
+    expect(tooMany.status).toBe(400)
+    expect(prisma.extracao.create).not.toHaveBeenCalled()
+  })
+
+  it("rejeita confiança fora de 0–100", async () => {
+    const response = await POST(
+      buildRequest({
+        exercicioId: 1,
+        arquivoOrigem: "a.pdf",
+        itens: [{ contaId: 1, valor: 10, confianca: 150 }],
+      }),
+    )
+    expect(response.status).toBe(400)
+    expect(prisma.extracao.create).not.toHaveBeenCalled()
+  })
+
   it("grava a extração, os itens extraídos e só lança Valor para os itens mapeados", async () => {
     prisma.extracao.create.mockResolvedValue({ id: 99 })
 
