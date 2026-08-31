@@ -11,6 +11,7 @@ import {
   type DreValues,
   type StaticLine,
 } from "./financial-data"
+import { DEFAULT_SECTOR_ID } from "./sector-benchmarks"
 
 export interface Exercicio {
   id: string
@@ -27,6 +28,7 @@ export interface AuditEntry {
 
 interface StoreData {
   companyName: string
+  sectorId: string
   exercicios: Exercicio[]
   accounts: Account[]
   dreByExercicio: Record<string, DreValues>
@@ -41,6 +43,7 @@ const STORAGE_VERSION = 1
 function seedData(): StoreData {
   return {
     companyName: COMPANY.name,
+    sectorId: DEFAULT_SECTOR_ID,
     exercicios: SEED_EXERCICIOS.map((id) => ({ id, label: id })),
     accounts: createSeedAccounts(),
     dreByExercicio: createSeedDre(),
@@ -107,6 +110,7 @@ function mapAccountTree(accounts: Account[], code: string, fn: (a: Account) => A
 interface StoreApi extends StoreData {
   hydrated: boolean
   setCurrentUser: (name: string) => void
+  setSector: (sectorId: string) => void
   addExercicio: (label: string) => string
   updateAccountValue: (code: string, exercicioId: string, value: number | undefined) => void
   updateDreValue: (exercicioId: string, lineId: string, value: number | undefined) => void
@@ -129,11 +133,13 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
       if (raw) {
         const parsed = JSON.parse(raw)
         if (parsed?.version === STORAGE_VERSION && parsed.data) {
+          // Mescla com os dados de exemplo para preencher campos adicionados depois que
+          // este registro foi salvo (ex: sectorId), sem precisar invalidar o storage inteiro.
           // One-time hydration from localStorage on mount; can't read it during the lazy
           // useState initializer because it must return the same value on server and client
           // to avoid a hydration mismatch.
           // eslint-disable-next-line react-hooks/set-state-in-effect
-          setData(parsed.data)
+          setData({ ...seedData(), ...parsed.data })
         }
       }
     } catch {
@@ -169,6 +175,14 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
   const setCurrentUser = useCallback((name: string) => {
     setData((prev) => ({ ...prev, currentUser: name || prev.currentUser }))
   }, [])
+
+  const setSector = useCallback((sectorId: string) => {
+    setData((prev) => ({
+      ...prev,
+      sectorId,
+      auditLog: audit(prev, "Setor alterado", `Benchmark setorial ajustado para "${sectorId}".`),
+    }))
+  }, [audit])
 
   const addExercicio = useCallback((label: string) => {
     const id = `${slugify(label)}-${uid().slice(0, 4)}`
@@ -265,6 +279,7 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
       ...data,
       hydrated,
       setCurrentUser,
+      setSector,
       addExercicio,
       updateAccountValue,
       updateDreValue,
@@ -273,7 +288,19 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
       deleteAccountNode,
       resetToSeed,
     }),
-    [data, hydrated, setCurrentUser, addExercicio, updateAccountValue, updateDreValue, addAccountNode, renameAccountNode, deleteAccountNode, resetToSeed],
+    [
+      data,
+      hydrated,
+      setCurrentUser,
+      setSector,
+      addExercicio,
+      updateAccountValue,
+      updateDreValue,
+      addAccountNode,
+      renameAccountNode,
+      deleteAccountNode,
+      resetToSeed,
+    ],
   )
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>

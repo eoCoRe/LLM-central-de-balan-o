@@ -284,7 +284,7 @@ function BalancoTab({
               return (
                 <tr key={account.code} className={cn("border-b border-border last:border-0", isRoot && "bg-primary/[0.03]")}>
                   <td
-                    className={cn("sticky left-0 z-[1] bg-card px-4 py-1.5", isRoot && "bg-[oklch(0.985_0_0)]")}
+                    className={cn("sticky left-0 z-[1] bg-card px-4 py-1.5", isRoot && "bg-muted")}
                     style={{ paddingLeft: `${depth * 18 + 16}px` }}
                   >
                     <span className="mr-2 font-mono text-[11px] tabular-nums text-muted-foreground">{account.code}</span>

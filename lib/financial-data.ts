@@ -159,18 +159,26 @@ export function computeDre(inputs: DreValues): Record<string, number | undefined
   }
 }
 
+// Retorna os inputs de DRE indexados por exercício (dreByExercicio[exercicioId][lineId]),
+// que é a mesma chave usada pelo store (lib/store.tsx) e por computeDre().
 export function createSeedDre(): Record<string, DreValues> {
   const ids = SEED_EXERCICIOS
-  const line = (a: number, b: number, c: number): DreValues => ({ [ids[0]]: a, [ids[1]]: b, [ids[2]]: c })
-  return {
-    "receita-bruta": line(22000, 5800, 6300),
-    deducoes: line(-4000, -1000, -1100),
-    cmv: line(-12600, -3360, -3640),
-    "despesas-operacionais": line(-3600, -960, -1000),
-    "resultado-financeiro": line(-400, -110, -120),
-    "ir-csll": line(-420, -111, -132),
-    compras: line(12800, 3400, 3700),
-  } as unknown as Record<string, DreValues>
+  const byLine: Record<string, [number, number, number]> = {
+    "receita-bruta": [22000, 5800, 6300],
+    deducoes: [-4000, -1000, -1100],
+    cmv: [-12600, -3360, -3640],
+    "despesas-operacionais": [-3600, -960, -1000],
+    "resultado-financeiro": [-400, -110, -120],
+    "ir-csll": [-420, -111, -132],
+    compras: [12800, 3400, 3700],
+  }
+  const out: Record<string, DreValues> = {}
+  ids.forEach((exercicioId, i) => {
+    const values: DreValues = {}
+    for (const [lineId, series] of Object.entries(byLine)) values[lineId] = series[i]
+    out[exercicioId] = values
+  })
+  return out
 }
 
 // DFC — Demonstração dos Fluxos de Caixa. Fora do escopo funcional da RFC
