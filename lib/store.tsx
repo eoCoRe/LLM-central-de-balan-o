@@ -348,8 +348,6 @@ function removeAccountNode(accounts: Account[], code: string): Account[] {
     .map((a) => (a.children ? { ...a, children: removeAccountNode(a.children, code) } : a))
 }
 
-// The hook must live next to the provider/context it reads from.
-// eslint-disable-next-line react-refresh/only-export-components
 export function useFinancialStore(): StoreApi {
   const ctx = useContext(StoreContext)
   if (!ctx) throw new Error("useFinancialStore deve ser usado dentro de <FinancialDataProvider>")

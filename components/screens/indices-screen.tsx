@@ -161,7 +161,7 @@ export function IndicesScreen() {
             </code>{" "}
             para referenciar contas do Plano de Contas nas fórmulas. Operadores{" "}
             <code className="font-mono text-xs text-foreground">+ − × /</code> e parênteses são suportados. A
-            "Média do Setor" é uma referência ilustrativa cadastrada por setor — ajuste em{" "}
+            “Média do Setor” é uma referência ilustrativa cadastrada por setor — ajuste em{" "}
             <code className="font-mono text-xs text-foreground">lib/sector-benchmarks.ts</code> conforme a fonte
             disponível.
           </p>

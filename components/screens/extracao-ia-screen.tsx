@@ -273,7 +273,7 @@ export function ExtracaoIaScreen({ onNavigate }: { onNavigate: (id: "tabulacao")
                             <div className="flex flex-col gap-1.5">
                               <span className="inline-flex w-fit items-center gap-1 rounded bg-risk-muted px-1.5 py-0.5 text-[11px] font-medium text-risk">
                                 <AlertTriangle className="size-3" />
-                                "{row.suggestedName}" não reconhecida
+                                “{row.suggestedName}” não reconhecida
                               </span>
                               <select
                                 value={row.mappedCode ?? ""}
@@ -350,7 +350,7 @@ export function ExtracaoIaScreen({ onNavigate }: { onNavigate: (id: "tabulacao")
           <div className="flex flex-col items-center justify-center gap-3 rounded-md border border-ok/30 bg-ok-muted px-6 py-16 text-center">
             <CheckCircle2 className="size-8 text-ok" />
             <p className="text-sm font-medium text-ok">
-              {confirmedCount} valor(es) gravado(s) em {exercicioId} a partir de "{fileName}".
+              {confirmedCount} valor(es) gravado(s) em {exercicioId} a partir de “{fileName}”.
             </p>
             <p className="text-xs text-ok/70">
               Os lançamentos aparecem na Tabulação e já entram no cálculo dos índices e da Opinião de Venda.
