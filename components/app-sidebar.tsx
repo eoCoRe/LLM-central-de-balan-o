@@ -15,7 +15,7 @@ export function AppSidebar({ active, onNavigate }: AppSidebarProps) {
     <aside className="flex h-dvh w-60 shrink-0 flex-col border-r border-border bg-sidebar">
       {/* Marca */}
       <div className="flex items-center gap-2.5 px-4 py-4">
-        <div className="flex size-8 items-center justify-center rounded-md bg-primary font-mono text-sm font-semibold text-primary-foreground">
+        <div className="flex size-8 items-center justify-center rounded-md bg-primary font-mono text-sm font-semibold text-primary-foreground shadow-md shadow-primary/30">
           CB
         </div>
         <span className="text-sm font-semibold tracking-tight text-foreground">Central de Balanços</span>
@@ -25,7 +25,7 @@ export function AppSidebar({ active, onNavigate }: AppSidebarProps) {
       <div className="px-3 pb-3">
         <button
           type="button"
-          className="flex w-full items-center gap-2 rounded-md border border-border bg-background px-2.5 py-2 text-left text-sm text-muted-foreground transition-colors hover:border-ring/40"
+          className="flex w-full items-center gap-2 rounded-md border border-border bg-background px-2.5 py-2 text-left text-sm text-muted-foreground transition-all duration-150 hover:border-ring/50 hover:shadow-sm hover:shadow-primary/10"
         >
           <Search className="size-3.5" />
           <span className="flex-1">Buscar…</span>
@@ -98,13 +98,18 @@ function NavButton({
       onClick={onClick}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors",
+        "group/nav flex w-full items-center gap-2.5 rounded-md border-l-2 px-2.5 py-1.5 text-sm transition-all duration-150",
         active
-          ? "bg-primary/[0.06] font-medium text-foreground"
-          : "text-muted-foreground hover:bg-primary/[0.04] hover:text-foreground",
+          ? "border-primary bg-primary/10 font-medium text-primary"
+          : "border-transparent text-muted-foreground hover:border-primary/30 hover:bg-primary/[0.04] hover:text-foreground",
       )}
     >
-      <Icon className={cn("size-4 shrink-0", active ? "text-foreground" : "text-muted-foreground")} />
+      <Icon
+        className={cn(
+          "size-4 shrink-0 transition-colors",
+          active ? "text-primary" : "text-muted-foreground group-hover/nav:text-foreground",
+        )}
+      />
       <span className="flex-1 text-left">{item.label}</span>
       {item.badge && (
         <span className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wide text-muted-foreground">

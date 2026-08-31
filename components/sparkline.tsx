@@ -46,18 +46,18 @@ export function Sparkline({ points, labels, height = 200 }: SparklineProps) {
 
       <defs>
         <linearGradient id="sparkFill" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" className="[stop-color:var(--color-foreground)]" stopOpacity={0.08} />
-          <stop offset="100%" className="[stop-color:var(--color-foreground)]" stopOpacity={0} />
+          <stop offset="0%" className="[stop-color:var(--color-primary)]" stopOpacity={0.22} />
+          <stop offset="100%" className="[stop-color:var(--color-primary)]" stopOpacity={0} />
         </linearGradient>
       </defs>
 
       <path d={areaPath} fill="url(#sparkFill)" />
-      <path d={linePath} fill="none" className="stroke-foreground" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <path d={linePath} fill="none" className="stroke-primary" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
 
       {coords.map((c, i) => (
         <g key={i}>
-          <circle cx={c.x} cy={c.y} r={4} className="fill-background stroke-foreground" strokeWidth={2} />
-          <text x={c.x} y={c.y - 12} textAnchor="middle" className="fill-foreground font-mono text-[11px]">
+          <circle cx={c.x} cy={c.y} r={4} className="fill-background stroke-primary" strokeWidth={2.5} />
+          <text x={c.x} y={c.y - 12} textAnchor="middle" className="fill-foreground font-mono text-[11px] font-medium">
             {points[i].toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </text>
           <text x={c.x} y={height - 6} textAnchor="middle" className="fill-muted-foreground text-[11px]">

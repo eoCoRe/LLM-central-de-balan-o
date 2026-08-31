@@ -1,18 +1,23 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
-import { Inter, JetBrains_Mono } from 'next/font/google'
+import { IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google'
 import { FinancialDataProvider } from '@/lib/store'
 import './globals.css'
 
-const inter = Inter({
+// IBM Plex é uma família única (sans + mono desenhados juntos, pela IBM) em vez do
+// combo Inter + JetBrains Mono — a dupla que praticamente todo template gerado por
+// IA (shadcn, v0, etc.) usa por padrão.
+const plexSans = IBM_Plex_Sans({
   subsets: ['latin'],
-  variable: '--font-inter',
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-plex-sans',
   display: 'swap',
 })
 
-const jetbrainsMono = JetBrains_Mono({
+const plexMono = IBM_Plex_Mono({
   subsets: ['latin'],
-  variable: '--font-jetbrains-mono',
+  weight: ['400', '500', '600'],
+  variable: '--font-plex-mono',
   display: 'swap',
 })
 
@@ -55,7 +60,7 @@ export default function RootLayout({
   return (
     <html
       lang="pt-BR"
-      className={`${inter.variable} ${jetbrainsMono.variable} bg-background`}
+      className={`${plexSans.variable} ${plexMono.variable} bg-background`}
     >
       <body className="font-sans antialiased">
         <FinancialDataProvider>{children}</FinancialDataProvider>

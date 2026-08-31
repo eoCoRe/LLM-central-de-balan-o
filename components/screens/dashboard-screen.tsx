@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { ArrowDownRight, ArrowUpRight } from "lucide-react"
+import { ArrowDownRight, ArrowUpRight, Droplets, Landmark, PiggyBank, Wallet, type LucideIcon } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 import { Sparkline } from "@/components/sparkline"
 import { useFinancialStore } from "@/lib/store"
@@ -53,15 +53,22 @@ function KpiCard({
   value,
   unit,
   delta,
+  icon: Icon,
 }: {
   label: string
   value: string
   unit: string
   delta: number | undefined
+  icon: LucideIcon
 }) {
   return (
-    <div className="rounded-md border border-border bg-card p-4">
-      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+    <div className="group rounded-md border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md hover:shadow-primary/10">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+        <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
+          <Icon className="size-3.5" />
+        </div>
+      </div>
       <div className="mt-3 flex items-baseline gap-1.5">
         <span className="font-mono text-2xl font-semibold tabular-nums text-foreground">{value}</span>
         <span className="text-xs text-muted-foreground">{unit}</span>
@@ -147,31 +154,40 @@ export function DashboardScreen() {
       <div className="flex flex-col gap-6 px-8 py-6">
         {/* KPIs */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <KpiCard label="Ativo Total" value={fmtBRLMaybe(ativo)} unit="mil BRL" delta={deltaPercent(ativo, ativoPrev)} />
+          <KpiCard
+            label="Ativo Total"
+            value={fmtBRLMaybe(ativo)}
+            unit="mil BRL"
+            delta={deltaPercent(ativo, ativoPrev)}
+            icon={Wallet}
+          />
           <KpiCard
             label="Passivo Total"
             value={fmtBRLMaybe(passivoTotal)}
             unit="mil BRL"
             delta={deltaPercent(passivoTotal, passivoPrev)}
+            icon={Landmark}
           />
           <KpiCard
             label="Patrimônio Líquido"
             value={fmtBRLMaybe(pl)}
             unit="mil BRL"
             delta={deltaPercent(pl, plPrev)}
+            icon={PiggyBank}
           />
           <KpiCard
             label="Liquidez Corrente"
             value={lc === undefined ? "—" : formatRatio(lc)}
             unit="índice"
             delta={deltaPercent(lc, lcPrev)}
+            icon={Droplets}
           />
         </div>
 
         {/* Gráfico + Alertas */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="rounded-md border border-border bg-card p-5 lg:col-span-2">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Evolução</p>
+          <div className="rounded-md border border-border bg-card p-5 shadow-sm transition-shadow duration-200 hover:shadow-md lg:col-span-2">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-primary">Evolução</p>
             <h2 className="mt-1 text-sm font-semibold text-foreground">Liquidez Corrente</h2>
             <div className="mt-4 h-52">
               {sparkReady ? (
@@ -184,8 +200,8 @@ export function DashboardScreen() {
             </div>
           </div>
 
-          <div className="rounded-md border border-border bg-card p-5">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Alertas</p>
+          <div className="rounded-md border border-border bg-card p-5 shadow-sm transition-shadow duration-200 hover:shadow-md">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-primary">Alertas</p>
             <h2 className="mt-1 text-sm font-semibold text-foreground">Pontos de atenção</h2>
             <ul className="mt-4 flex flex-col gap-4">
               {ALERTS.map((alert) => (
@@ -202,9 +218,9 @@ export function DashboardScreen() {
         </div>
 
         {/* Tabela de comparação */}
-        <div className="overflow-hidden rounded-md border border-border bg-card">
+        <div className="overflow-hidden rounded-md border border-border bg-card shadow-sm">
           <div className="border-b border-border px-5 py-3">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Comparativo</p>
+            <p className="text-[11px] font-medium uppercase tracking-wider text-primary">Comparativo</p>
             <h2 className="mt-1 text-sm font-semibold text-foreground">Indicadores por período</h2>
           </div>
           <table className="w-full text-sm">
