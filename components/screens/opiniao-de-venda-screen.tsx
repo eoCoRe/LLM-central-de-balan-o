@@ -4,11 +4,12 @@ import { useMemo, useState } from "react"
 import { CheckCircle2, AlertTriangle, XCircle, Gavel, FileText } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
+import { useFinancialStore } from "@/lib/store"
 import {
   buildSalesOpinion,
+  computeDre,
   formatBRL,
   suggestedCreditLimit,
-  LATEST_PERIOD,
   COMPANY,
   type CriterionStatus,
   type OpinionRating,
@@ -55,10 +56,34 @@ function parseCurrency(raw: string): number {
 }
 
 export function OpiniaoDeVendaScreen() {
-  const defaultLimit = suggestedCreditLimit()
+  const store = useFinancialStore()
+  const exercicioIds = useMemo(() => store.exercicios.map((e) => e.id), [store.exercicios])
+  const current = exercicioIds[exercicioIds.length - 1]
+  const previous = exercicioIds[exercicioIds.length - 2]
+
+  const defaultLimit = useMemo(
+    () =>
+      current
+        ? suggestedCreditLimit(store.accounts, computeDre(store.dreByExercicio[current] ?? {}), store.dfc, current)
+        : 0,
+    [store.accounts, store.dreByExercicio, store.dfc, current],
+  )
   const [requestedValue, setRequestedValue] = useState<number>(Math.round(defaultLimit * 0.8))
 
-  const opinion = useMemo(() => buildSalesOpinion(requestedValue), [requestedValue])
+  const opinion = useMemo(
+    () =>
+      current
+        ? buildSalesOpinion(store.accounts, store.dreByExercicio, store.dfc, current, previous, requestedValue)
+        : null,
+    [store.accounts, store.dreByExercicio, store.dfc, current, previous, requestedValue],
+  )
+  if (!opinion) {
+    return (
+      <div className="flex flex-col">
+        <PageHeader eyebrow="Decisão de crédito" title="Opinião de Venda" subtitle="Nenhum exercício tabulado ainda." />
+      </div>
+    )
+  }
   const ratingStatus = RATING_STATUS[opinion.rating]
   const ratingStyle = STATUS_STYLES[ratingStatus]
   const RatingIcon = ratingStyle.icon
@@ -68,7 +93,7 @@ export function OpiniaoDeVendaScreen() {
       <PageHeader
         eyebrow="Decisão de crédito"
         title="Opinião de Venda"
-        subtitle={`Parecer automático para ${COMPANY.name}, com base nos indicadores de ${LATEST_PERIOD}.`}
+        subtitle={`Parecer automático para ${COMPANY.name}, com base nos indicadores de ${current}.`}
         actions={
           <Button size="sm" className="h-8 gap-1.5">
             <FileText className="size-3.5" />

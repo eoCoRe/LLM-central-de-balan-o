@@ -1,16 +1,14 @@
-// Modelo de dados da Central de Balanços
-// Valores em milhares de BRL (unidade base). A escala é aplicada na exibição.
-
-export const PERIODS = ["4T2024", "1T2025", "1T2026"] as const
-export type Period = (typeof PERIODS)[number]
-
-export type ValuesByPeriod = Record<Period, number>
+// Modelo de dados e motor de cálculo da Central de Balanços.
+// Valores em milhares de BRL (unidade base). A escala é aplicada só na exibição.
+// Este arquivo é puro (sem estado React) — o estado editável vive em lib/store.tsx.
 
 export interface Account {
   code: string
   name: string
-  // Contas folha possuem valores; grupos têm o total calculado a partir dos filhos.
-  values?: ValuesByPeriod
+  // Contas analíticas (folha) recebem valores por exercício. Ausência de valor
+  // para um exercício = "não preenchido" (distinto de zero), usado para sinalizar
+  // dados insuficientes (RN04).
+  values?: Record<string, number>
   children?: Account[]
 }
 
@@ -19,119 +17,204 @@ export const COMPANY = {
   cnpj: "12.345.678/0001-90",
 }
 
-function v(a: number, b: number, c: number): ValuesByPeriod {
-  return { "4T2024": a, "1T2025": b, "1T2026": c }
+function v(a: number, b: number, c: number, ids: string[]): Record<string, number> {
+  return { [ids[0]]: a, [ids[1]]: b, [ids[2]]: c }
 }
 
-// Plano de Contas — padrão contábil brasileiro
-export const CHART_OF_ACCOUNTS: Account[] = [
-  {
-    code: "1",
-    name: "Ativo",
-    children: [
-      {
-        code: "1.1",
-        name: "Ativo Circulante",
-        children: [
-          { code: "1.1.01", name: "Disponibilidades", values: v(850, 920, 1050) },
-          { code: "1.1.02", name: "Aplicações Financeiras", values: v(1200, 1350, 1500) },
-          { code: "1.1.03", name: "Contas a Receber de Clientes", values: v(3200, 3450, 3800) },
-          { code: "1.1.04", name: "Estoques", values: v(2800, 2950, 3100) },
-          { code: "1.1.05", name: "Outros Créditos", values: v(450, 480, 520) },
-        ],
-      },
-      {
-        code: "1.2",
-        name: "Ativo Realizável a Longo Prazo",
-        children: [
-          { code: "1.2.01", name: "Aplicações Financeiras LP", values: v(600, 650, 700) },
-          { code: "1.2.02", name: "Depósitos Judiciais", values: v(300, 320, 350) },
-        ],
-      },
-      {
-        code: "1.3",
-        name: "Ativo Permanente",
-        children: [
-          { code: "1.3.01", name: "Imobilizado", values: v(4200, 4100, 4400) },
-          { code: "1.3.02", name: "Intangível", values: v(800, 850, 900) },
-        ],
-      },
-    ],
-  },
-  {
-    code: "2",
-    name: "Passivo",
-    children: [
-      {
-        code: "2.1",
-        name: "Passivo Circulante",
-        children: [
-          { code: "2.1.01", name: "Fornecedores", values: v(3100, 3300, 3500) },
-          { code: "2.1.02", name: "Empréstimos e Financiamentos", values: v(1800, 1900, 2000) },
-          { code: "2.1.03", name: "Obrigações Tributárias", values: v(700, 750, 820) },
-        ],
-      },
-      {
-        code: "2.2",
-        name: "Exigível a Longo Prazo",
-        children: [{ code: "2.2.01", name: "Empréstimos LP", values: v(2400, 2500, 2600) }],
-      },
-      {
-        code: "2.3",
-        name: "Patrimônio Líquido",
-        children: [
-          { code: "2.3.01", name: "Capital Social", values: v(5000, 5000, 5000) },
-          { code: "2.3.02", name: "Reservas de Lucros", values: v(1400, 1620, 2400) },
-        ],
-      },
-    ],
-  },
-]
+export const SEED_EXERCICIOS = ["4T2024", "1T2025", "1T2026"]
 
-// DRE — Demonstração do Resultado do Exercício
-export interface DreLine {
+// Plano de Contas — padrão contábil brasileiro (dados de exemplo)
+export function createSeedAccounts(): Account[] {
+  const ids = SEED_EXERCICIOS
+  return [
+    {
+      code: "1",
+      name: "Ativo",
+      children: [
+        {
+          code: "1.1",
+          name: "Ativo Circulante",
+          children: [
+            { code: "1.1.1", name: "Disponibilidades", values: v(850, 920, 1050, ids) },
+            { code: "1.1.2", name: "Aplicações Financeiras", values: v(1200, 1350, 1500, ids) },
+            { code: "1.1.3", name: "Contas a Receber de Clientes", values: v(3200, 3450, 3800, ids) },
+            { code: "1.1.4", name: "Estoques", values: v(2800, 2950, 3100, ids) },
+            { code: "1.1.5", name: "Outros Créditos", values: v(450, 480, 520, ids) },
+          ],
+        },
+        {
+          code: "1.2",
+          name: "Ativo Realizável a Longo Prazo",
+          children: [
+            { code: "1.2.1", name: "Aplicações Financeiras LP", values: v(600, 650, 700, ids) },
+            { code: "1.2.2", name: "Depósitos Judiciais", values: v(300, 320, 350, ids) },
+          ],
+        },
+        {
+          code: "1.3",
+          name: "Ativo Permanente",
+          children: [
+            { code: "1.3.1", name: "Imobilizado", values: v(4200, 4100, 4400, ids) },
+            { code: "1.3.2", name: "Intangível", values: v(800, 850, 900, ids) },
+          ],
+        },
+      ],
+    },
+    {
+      code: "2",
+      name: "Passivo",
+      children: [
+        {
+          code: "2.1",
+          name: "Passivo Circulante",
+          children: [
+            { code: "2.1.1", name: "Fornecedores", values: v(3100, 3300, 3500, ids) },
+            { code: "2.1.2", name: "Empréstimos e Financiamentos", values: v(1800, 1900, 2000, ids) },
+            { code: "2.1.3", name: "Obrigações Tributárias", values: v(700, 750, 820, ids) },
+          ],
+        },
+        {
+          code: "2.2",
+          name: "Exigível a Longo Prazo",
+          children: [{ code: "2.2.1", name: "Empréstimos LP", values: v(2400, 2500, 2600, ids) }],
+        },
+        {
+          code: "2.3",
+          name: "Patrimônio Líquido",
+          children: [
+            { code: "2.3.1", name: "Capital Social", values: v(5000, 5000, 5000, ids) },
+            { code: "2.3.2", name: "Reservas de Lucros", values: v(1400, 1620, 2400, ids) },
+          ],
+        },
+      ],
+    },
+  ]
+}
+
+// ---- DRE — Demonstração do Resultado do Exercício ----
+// Linhas de entrada (o analista tabula) + linhas calculadas (totalizadores automáticos).
+
+export type DreLineKind = "input" | "computed"
+
+export interface DreLineDef {
+  id: string
   name: string
-  values: ValuesByPeriod
-  kind: "line" | "subtotal" | "total"
+  kind: DreLineKind
   deduction?: boolean
+  isTotal?: boolean
 }
 
-export const DRE: DreLine[] = [
-  { name: "Receita Bruta", values: v(22000, 5800, 6300), kind: "line" },
-  { name: "(-) Deduções da Receita", values: v(-4000, -1000, -1100), kind: "line", deduction: true },
-  { name: "Receita Líquida", values: v(18000, 4800, 5200), kind: "subtotal" },
-  { name: "(-) Custo das Mercadorias Vendidas", values: v(-12600, -3360, -3640), kind: "line", deduction: true },
-  { name: "Lucro Bruto", values: v(5400, 1440, 1560), kind: "subtotal" },
-  { name: "(-) Despesas Operacionais", values: v(-3600, -960, -1000), kind: "line", deduction: true },
-  { name: "Resultado Operacional (EBIT)", values: v(1800, 480, 560), kind: "subtotal" },
-  { name: "(+/-) Resultado Financeiro", values: v(-400, -110, -120), kind: "line" },
-  { name: "Resultado Antes do IR/CSLL", values: v(1400, 370, 440), kind: "subtotal" },
-  { name: "(-) IR/CSLL", values: v(-420, -111, -132), kind: "line", deduction: true },
-  { name: "Lucro Líquido do Exercício", values: v(980, 259, 308), kind: "total" },
+export const DRE_LINES: DreLineDef[] = [
+  { id: "receita-bruta", name: "Receita Bruta", kind: "input" },
+  { id: "deducoes", name: "(-) Deduções da Receita", kind: "input", deduction: true },
+  { id: "receita-liquida", name: "Receita Líquida", kind: "computed" },
+  { id: "cmv", name: "(-) Custo das Mercadorias Vendidas", kind: "input", deduction: true },
+  { id: "lucro-bruto", name: "Lucro Bruto", kind: "computed" },
+  { id: "despesas-operacionais", name: "(-) Despesas Operacionais", kind: "input", deduction: true },
+  { id: "ebit", name: "Resultado Operacional (EBIT)", kind: "computed" },
+  { id: "resultado-financeiro", name: "(+/-) Resultado Financeiro", kind: "input" },
+  { id: "resultado-antes-ir", name: "Resultado Antes do IR/CSLL", kind: "computed" },
+  { id: "ir-csll", name: "(-) IR/CSLL", kind: "input", deduction: true },
+  { id: "lucro-liquido", name: "Lucro Líquido do Exercício", kind: "computed", isTotal: true },
 ]
 
-// DFC — Demonstração dos Fluxos de Caixa
-export const DFC: DreLine[] = [
-  { name: "Fluxo de Caixa Operacional", values: v(1500, 420, 500), kind: "subtotal" },
-  { name: "Fluxo de Caixa de Investimentos", values: v(-800, -300, -400), kind: "subtotal" },
-  { name: "Fluxo de Caixa de Financiamentos", values: v(-500, -50, 30), kind: "subtotal" },
-  { name: "Variação Líquida de Caixa", values: v(200, 70, 130), kind: "total" },
-  { name: "Caixa no Início do Período", values: v(650, 850, 920), kind: "line" },
-  { name: "Caixa no Fim do Período", values: v(850, 920, 1050), kind: "total" },
-]
+// Linha complementar (não faz parte do resultado) usada só para o índice PMPC.
+export const DRE_MEMO_LINE = { id: "compras", name: "Compras (informativo — usado no PMPC)" }
 
-// ---- Cálculos derivados ----
+export type DreValues = Partial<Record<string, number>>
 
-export function sumAccount(account: Account, period: Period): number {
+function add2(a?: number, b?: number): number | undefined {
+  if (a === undefined || b === undefined) return undefined
+  return a + b
+}
+
+// Recalcula os totalizadores da DRE a partir das linhas de entrada. Propaga
+// "indefinido" quando falta algum insumo — RN04 (dados insuficientes).
+export function computeDre(inputs: DreValues): Record<string, number | undefined> {
+  const receitaBruta = inputs["receita-bruta"]
+  const deducoes = inputs["deducoes"]
+  const receitaLiquida = add2(receitaBruta, deducoes)
+  const cmv = inputs["cmv"]
+  const lucroBruto = add2(receitaLiquida, cmv)
+  const despesasOperacionais = inputs["despesas-operacionais"]
+  const ebit = add2(lucroBruto, despesasOperacionais)
+  const resultadoFinanceiro = inputs["resultado-financeiro"]
+  const resultadoAntesIr = add2(ebit, resultadoFinanceiro)
+  const irCsll = inputs["ir-csll"]
+  const lucroLiquido = add2(resultadoAntesIr, irCsll)
+
+  return {
+    "receita-bruta": receitaBruta,
+    deducoes,
+    "receita-liquida": receitaLiquida,
+    cmv,
+    "lucro-bruto": lucroBruto,
+    "despesas-operacionais": despesasOperacionais,
+    ebit,
+    "resultado-financeiro": resultadoFinanceiro,
+    "resultado-antes-ir": resultadoAntesIr,
+    "ir-csll": irCsll,
+    "lucro-liquido": lucroLiquido,
+    compras: inputs.compras,
+  }
+}
+
+export function createSeedDre(): Record<string, DreValues> {
+  const ids = SEED_EXERCICIOS
+  const line = (a: number, b: number, c: number): DreValues => ({ [ids[0]]: a, [ids[1]]: b, [ids[2]]: c })
+  return {
+    "receita-bruta": line(22000, 5800, 6300),
+    deducoes: line(-4000, -1000, -1100),
+    cmv: line(-12600, -3360, -3640),
+    "despesas-operacionais": line(-3600, -960, -1000),
+    "resultado-financeiro": line(-400, -110, -120),
+    "ir-csll": line(-420, -111, -132),
+    compras: line(12800, 3400, 3700),
+  } as unknown as Record<string, DreValues>
+}
+
+// DFC — Demonstração dos Fluxos de Caixa. Fora do escopo funcional da RFC
+// (ver §2.6 "Fora do Escopo": não cobre DFC nesta versão) — mantida somente
+// como visualização estática de exemplo, não editável na Tabulação.
+export interface StaticLine {
+  name: string
+  values: Record<string, number>
+  kind: "line" | "subtotal" | "total"
+}
+
+export function createSeedDfc(): StaticLine[] {
+  const ids = SEED_EXERCICIOS
+  const line = (a: number, b: number, c: number): Record<string, number> => ({ [ids[0]]: a, [ids[1]]: b, [ids[2]]: c })
+  return [
+    { name: "Fluxo de Caixa Operacional", values: line(1500, 420, 500), kind: "subtotal" },
+    { name: "Fluxo de Caixa de Investimentos", values: line(-800, -300, -400), kind: "subtotal" },
+    { name: "Fluxo de Caixa de Financiamentos", values: line(-500, -50, 30), kind: "subtotal" },
+    { name: "Variação Líquida de Caixa", values: line(200, 70, 130), kind: "total" },
+    { name: "Caixa no Início do Período", values: line(650, 850, 920), kind: "line" },
+    { name: "Caixa no Fim do Período", values: line(850, 920, 1050), kind: "total" },
+  ]
+}
+
+// ---- Cálculos sobre o Plano de Contas ----
+
+// Soma um nó do plano de contas para um exercício. Retorna undefined
+// (dados insuficientes) se o nó ou algum descendente não tiver valor lançado.
+export function sumAccount(account: Account, period: string): number | undefined {
   if (account.values) return account.values[period]
   if (account.children) {
-    return account.children.reduce((acc, child) => acc + sumAccount(child, period), 0)
+    let total = 0
+    for (const child of account.children) {
+      const val = sumAccount(child, period)
+      if (val === undefined) return undefined
+      total += val
+    }
+    return total
   }
-  return 0
+  return undefined
 }
 
-export function findAccountByName(name: string): Account | undefined {
-  const stack = [...CHART_OF_ACCOUNTS]
+export function findAccountByName(accounts: Account[], name: string): Account | undefined {
+  const stack = [...accounts]
   while (stack.length) {
     const node = stack.pop()!
     if (node.name === name) return node
@@ -140,75 +223,285 @@ export function findAccountByName(name: string): Account | undefined {
   return undefined
 }
 
-export function accountTotalByName(name: string, period: Period): number {
-  const account = findAccountByName(name)
-  return account ? sumAccount(account, period) : 0
+export function accountTotalByName(accounts: Account[], name: string, period: string): number | undefined {
+  const account = findAccountByName(accounts, name)
+  return account ? sumAccount(account, period) : undefined
 }
 
-function dreValue(name: string, period: Period): number {
-  return DRE.find((l) => l.name === name)?.values[period] ?? 0
+export function findAccountByCode(accounts: Account[], code: string): Account | undefined {
+  const stack = [...accounts]
+  while (stack.length) {
+    const node = stack.pop()!
+    if (node.code === code) return node
+    if (node.children) stack.push(...node.children)
+  }
+  return undefined
 }
 
-// Índices financeiros com fórmulas no padrão brasileiro
-export type IndicatorType = "Liquidez" | "Endividamento" | "Estrutura" | "Rentabilidade" | "Atividade"
+export function collectLeaves(accounts: Account[], out: Account[] = []): Account[] {
+  for (const account of accounts) {
+    if (account.values) out.push(account)
+    if (account.children) collectLeaves(account.children, out)
+  }
+  return out
+}
+
+export function flattenAccounts(
+  accounts: Account[],
+  depth = 0,
+  out: { account: Account; depth: number }[] = [],
+): { account: Account; depth: number }[] {
+  for (const account of accounts) {
+    out.push({ account, depth })
+    if (account.children) flattenAccounts(account.children, depth + 1, out)
+  }
+  return out
+}
+
+// ---- Motor de Índices Financeiros (RN01 / Apêndice C) ----
+
+export type IndicatorGroup = "Liquidez" | "Endividamento" | "Rentabilidade" | "Atividade"
+export type IndicatorUnit = "ratio" | "percent" | "dias"
+
+export interface IndicatorContext {
+  get: (accountName: string) => number | undefined
+  dre: Record<string, number | undefined>
+}
 
 export interface Indicator {
+  id: string
   name: string
   formula: string
-  type: IndicatorType
-  unit: "ratio" | "percent"
-  compute: (period: Period) => number
+  group: IndicatorGroup
+  unit: IndicatorUnit
+  higherIsBetter: boolean
+  thresholdGood: number
+  thresholdMedium: number
+  compute: (ctx: IndicatorContext) => number | undefined
+}
+
+function div(a?: number, b?: number): number | undefined {
+  if (a === undefined || b === undefined || b === 0) return undefined
+  return a / b
+}
+function sub(a?: number, b?: number): number | undefined {
+  if (a === undefined || b === undefined) return undefined
+  return a - b
+}
+function mulPercent(x?: number): number | undefined {
+  return x === undefined ? undefined : x * 100
 }
 
 export const INDICATORS: Indicator[] = [
   {
+    id: "liquidez-corrente",
     name: "Liquidez Corrente",
     formula: "[Ativo Circulante] / [Passivo Circulante]",
-    type: "Liquidez",
+    group: "Liquidez",
     unit: "ratio",
-    compute: (p) => accountTotalByName("Ativo Circulante", p) / accountTotalByName("Passivo Circulante", p),
+    higherIsBetter: true,
+    thresholdGood: 1.5,
+    thresholdMedium: 1.0,
+    compute: ({ get }) => div(get("Ativo Circulante"), get("Passivo Circulante")),
   },
   {
+    id: "liquidez-seca",
+    name: "Liquidez Seca",
+    formula: "([Ativo Circulante] − [Estoques]) / [Passivo Circulante]",
+    group: "Liquidez",
+    unit: "ratio",
+    higherIsBetter: true,
+    thresholdGood: 1.0,
+    thresholdMedium: 0.7,
+    compute: ({ get }) => div(sub(get("Ativo Circulante"), get("Estoques")), get("Passivo Circulante")),
+  },
+  {
+    id: "liquidez-geral",
     name: "Liquidez Geral",
     formula: "([Ativo Circulante] + [Ativo Realizável a Longo Prazo]) / ([Passivo Circulante] + [Exigível a Longo Prazo])",
-    type: "Liquidez",
+    group: "Liquidez",
     unit: "ratio",
-    compute: (p) =>
-      (accountTotalByName("Ativo Circulante", p) + accountTotalByName("Ativo Realizável a Longo Prazo", p)) /
-      (accountTotalByName("Passivo Circulante", p) + accountTotalByName("Exigível a Longo Prazo", p)),
+    higherIsBetter: true,
+    thresholdGood: 1.0,
+    thresholdMedium: 0.7,
+    compute: ({ get }) => {
+      const num = add2(get("Ativo Circulante"), get("Ativo Realizável a Longo Prazo"))
+      const den = add2(get("Passivo Circulante"), get("Exigível a Longo Prazo"))
+      return div(num, den)
+    },
   },
   {
-    name: "Participação de Capital de Terceiros",
-    formula: "([Passivo Circulante] + [Exigível a Longo Prazo]) / [Ativo]",
-    type: "Endividamento",
+    id: "liquidez-imediata",
+    name: "Liquidez Imediata",
+    formula: "[Disponibilidades] / [Passivo Circulante]",
+    group: "Liquidez",
+    unit: "ratio",
+    higherIsBetter: true,
+    thresholdGood: 0.3,
+    thresholdMedium: 0.15,
+    compute: ({ get }) => div(get("Disponibilidades"), get("Passivo Circulante")),
+  },
+  {
+    id: "endividamento-geral",
+    name: "Endividamento Geral",
+    formula: "[Passivo Total] / [Ativo Total]",
+    group: "Endividamento",
     unit: "percent",
-    compute: (p) =>
-      ((accountTotalByName("Passivo Circulante", p) + accountTotalByName("Exigível a Longo Prazo", p)) /
-        accountTotalByName("Ativo", p)) *
-      100,
+    higherIsBetter: false,
+    thresholdGood: 50,
+    thresholdMedium: 70,
+    compute: ({ get }) => mulPercent(div(add2(get("Passivo Circulante"), get("Exigível a Longo Prazo")), get("Ativo"))),
   },
   {
+    id: "composicao-endividamento",
+    name: "Composição do Endividamento",
+    formula: "[Passivo Circulante] / [Passivo Total]",
+    group: "Endividamento",
+    unit: "percent",
+    higherIsBetter: false,
+    thresholdGood: 60,
+    thresholdMedium: 80,
+    compute: ({ get }) =>
+      mulPercent(div(get("Passivo Circulante"), add2(get("Passivo Circulante"), get("Exigível a Longo Prazo")))),
+  },
+  {
+    id: "imobilizacao-pl",
     name: "Imobilização do PL",
     formula: "[Ativo Permanente] / [Patrimônio Líquido]",
-    type: "Estrutura",
+    group: "Endividamento",
     unit: "percent",
-    compute: (p) => (accountTotalByName("Ativo Permanente", p) / accountTotalByName("Patrimônio Líquido", p)) * 100,
+    higherIsBetter: false,
+    thresholdGood: 70,
+    thresholdMedium: 100,
+    compute: ({ get }) => mulPercent(div(get("Ativo Permanente"), get("Patrimônio Líquido"))),
   },
   {
+    id: "margem-bruta",
+    name: "Margem Bruta",
+    formula: "[Lucro Bruto] / [Receita Líquida]",
+    group: "Rentabilidade",
+    unit: "percent",
+    higherIsBetter: true,
+    thresholdGood: 30,
+    thresholdMedium: 15,
+    compute: ({ dre }) => mulPercent(div(dre["lucro-bruto"], dre["receita-liquida"])),
+  },
+  {
+    id: "margem-liquida",
     name: "Margem Líquida",
-    formula: "[Lucro Líquido] / [Receita Líquida] × 100",
-    type: "Rentabilidade",
+    formula: "[Lucro Líquido] / [Receita Líquida]",
+    group: "Rentabilidade",
     unit: "percent",
-    compute: (p) => (dreValue("Lucro Líquido do Exercício", p) / dreValue("Receita Líquida", p)) * 100,
+    higherIsBetter: true,
+    thresholdGood: 5,
+    thresholdMedium: 2,
+    compute: ({ dre }) => mulPercent(div(dre["lucro-liquido"], dre["receita-liquida"])),
   },
   {
+    id: "roe",
+    name: "ROE",
+    formula: "[Lucro Líquido] / [Patrimônio Líquido]",
+    group: "Rentabilidade",
+    unit: "percent",
+    higherIsBetter: true,
+    thresholdGood: 15,
+    thresholdMedium: 8,
+    compute: ({ get, dre }) => mulPercent(div(dre["lucro-liquido"], get("Patrimônio Líquido"))),
+  },
+  {
+    id: "roa",
+    name: "ROA",
+    formula: "[Lucro Líquido] / [Ativo Total]",
+    group: "Rentabilidade",
+    unit: "percent",
+    higherIsBetter: true,
+    thresholdGood: 8,
+    thresholdMedium: 3,
+    compute: ({ get, dre }) => mulPercent(div(dre["lucro-liquido"], get("Ativo"))),
+  },
+  {
+    id: "giro-ativo",
     name: "Giro do Ativo",
-    formula: "[Receita Líquida] / [Ativo]",
-    type: "Atividade",
+    formula: "[Receita Líquida] / [Ativo Total]",
+    group: "Atividade",
     unit: "ratio",
-    compute: (p) => dreValue("Receita Líquida", p) / accountTotalByName("Ativo", p),
+    higherIsBetter: true,
+    thresholdGood: 1,
+    thresholdMedium: 0.5,
+    compute: ({ get, dre }) => div(dre["receita-liquida"], get("Ativo")),
+  },
+  {
+    id: "pmre",
+    name: "PMRE (Prazo Médio de Renovação de Estoques)",
+    formula: "([Estoques] / |[CMV]|) × 360",
+    group: "Atividade",
+    unit: "dias",
+    higherIsBetter: false,
+    thresholdGood: 60,
+    thresholdMedium: 90,
+    compute: ({ get, dre }) => {
+      const cmv = dre.cmv === undefined ? undefined : Math.abs(dre.cmv)
+      const r = div(get("Estoques"), cmv)
+      return r === undefined ? undefined : r * 360
+    },
+  },
+  {
+    id: "pmrv",
+    name: "PMRV (Prazo Médio de Recebimento de Vendas)",
+    formula: "([Contas a Receber] / [Receita Bruta]) × 360",
+    group: "Atividade",
+    unit: "dias",
+    higherIsBetter: false,
+    thresholdGood: 45,
+    thresholdMedium: 60,
+    compute: ({ get, dre }) => {
+      const r = div(get("Contas a Receber de Clientes"), dre["receita-bruta"])
+      return r === undefined ? undefined : r * 360
+    },
+  },
+  {
+    id: "pmpc",
+    name: "PMPC (Prazo Médio de Pagamento de Compras)",
+    formula: "([Fornecedores] / [Compras]) × 360",
+    group: "Atividade",
+    unit: "dias",
+    higherIsBetter: true,
+    thresholdGood: 45,
+    thresholdMedium: 30,
+    compute: ({ get, dre }) => {
+      const r = div(get("Fornecedores"), dre.compras)
+      return r === undefined ? undefined : r * 360
+    },
   },
 ]
+
+export function makeIndicatorContext(accounts: Account[], dre: Record<string, number | undefined>, period: string): IndicatorContext {
+  const cache = new Map<string, number | undefined>()
+  return {
+    get: (name: string) => {
+      if (cache.has(name)) return cache.get(name)
+      const value = accountTotalByName(accounts, name, period)
+      cache.set(name, value)
+      return value
+    },
+    dre,
+  }
+}
+
+export type IndicatorStatus = "ok" | "atencao" | "risco" | "indisponivel"
+
+export function indicatorStatus(indicator: Indicator, value: number | undefined): IndicatorStatus {
+  if (value === undefined || Number.isNaN(value) || !Number.isFinite(value)) return "indisponivel"
+  const { thresholdGood, thresholdMedium, higherIsBetter } = indicator
+  if (higherIsBetter) {
+    if (value >= thresholdGood) return "ok"
+    if (value >= thresholdMedium) return "atencao"
+    return "risco"
+  }
+  if (value <= thresholdGood) return "ok"
+  if (value <= thresholdMedium) return "atencao"
+  return "risco"
+}
 
 // ---- Formatação brasileira ----
 
@@ -239,8 +532,9 @@ export function formatBRL(value: number, decimals = 2): string {
   }).format(value)
 }
 
-export function formatScaled(valueInThousands: number, scale: Scale): string {
-  const scaled = applyScale(valueInThousands, scale)
+export function formatScaled(value: number | undefined, scale: Scale): string {
+  if (value === undefined) return "—"
+  const scaled = applyScale(value, scale)
   const decimals = scale === "milhoes" ? 2 : 0
   return formatBRL(scaled, decimals)
 }
@@ -253,20 +547,26 @@ export function formatPercent(value: number): string {
   return `${formatBRL(value, 1)}%`
 }
 
-export function formatIndicator(indicator: Indicator, period: Period): string {
-  const value = indicator.compute(period)
-  return indicator.unit === "percent" ? formatPercent(value) : formatRatio(value)
+export const DADOS_INSUFICIENTES = "Dados insuficientes"
+
+export function formatIndicatorValue(indicator: Indicator, value: number | undefined): string {
+  if (value === undefined) return DADOS_INSUFICIENTES
+  switch (indicator.unit) {
+    case "percent":
+      return formatPercent(value)
+    case "dias":
+      return `${Math.round(value)} dias`
+    default:
+      return formatRatio(value)
+  }
 }
 
-export function deltaPercent(current: number, previous: number): number {
-  if (previous === 0) return 0
+export function deltaPercent(current: number | undefined, previous: number | undefined): number | undefined {
+  if (current === undefined || previous === undefined || previous === 0) return undefined
   return ((current - previous) / Math.abs(previous)) * 100
 }
 
-// ---- Opinião de Venda (parecer de crédito) ----
-
-export const LATEST_PERIOD: Period = PERIODS[PERIODS.length - 1]
-export const PREVIOUS_PERIOD: Period = PERIODS[PERIODS.length - 2]
+// ---- Opinião de Venda (parecer de crédito) — funcionalidade extra, fora da RFC ----
 
 export type OpinionRating = "favoravel" | "ressalvas" | "desfavoravel"
 export type CriterionStatus = "ok" | "atencao" | "risco"
@@ -277,14 +577,14 @@ export interface OpinionCriterion {
   value: string
   status: CriterionStatus
   weight: number
-  score: number // 0..100 do critério
+  score: number
 }
 
 export interface SalesOpinion {
-  requestedValue: number // em reais
-  suggestedLimit: number // em reais
-  coverage: number // limite sugerido / valor solicitado
-  score: number // 0..100 ponderado
+  requestedValue: number
+  suggestedLimit: number
+  coverage: number
+  score: number
   rating: OpinionRating
   ratingLabel: string
   headline: string
@@ -311,27 +611,42 @@ function scoreBand(value: number, good: number, medium: number, higherIsBetter =
 
 const STATUS_SCORE: Record<CriterionStatus, number> = { ok: 100, atencao: 60, risco: 20 }
 
-// Limite de crédito sugerido, em reais, a partir da capacidade de geração de caixa e estrutura.
-export function suggestedCreditLimit(period: Period = LATEST_PERIOD): number {
-  const annualizedRevenue = dreValue("Receita Líquida", period) * 4 // trimestre → ano
-  const pl = accountTotalByName("Patrimônio Líquido", period)
-  const operatingCash = (DFC.find((l) => l.name === "Fluxo de Caixa Operacional")?.values[period] ?? 0) * 4
-  // Conservador: menor entre 25% do faturamento anualizado, 1,2× PL e 3× geração de caixa anual.
+export function suggestedCreditLimit(
+  accounts: Account[],
+  dre: Record<string, number | undefined>,
+  dfc: StaticLine[],
+  period: string,
+): number {
+  const receitaLiquida = dre["receita-liquida"] ?? 0
+  const annualizedRevenue = receitaLiquida * 4
+  const pl = accountTotalByName(accounts, "Patrimônio Líquido", period) ?? 0
+  const operatingCash = (dfc.find((l) => l.name === "Fluxo de Caixa Operacional")?.values[period] ?? 0) * 4
   const candidates = [annualizedRevenue * 0.25, pl * 1.2, operatingCash * 3]
   const limitInThousands = Math.max(0, Math.min(...candidates))
   return Math.round(limitInThousands * 1000)
 }
 
-export function buildSalesOpinion(requestedValue: number, period: Period = LATEST_PERIOD): SalesOpinion {
-  const liquidez = INDICATORS.find((i) => i.name === "Liquidez Corrente")!.compute(period)
-  const endividamento = INDICATORS.find((i) => i.name === "Participação de Capital de Terceiros")!.compute(period)
-  const margem = INDICATORS.find((i) => i.name === "Margem Líquida")!.compute(period)
+export function buildSalesOpinion(
+  accounts: Account[],
+  dreByExercicio: Record<string, DreValues>,
+  dfc: StaticLine[],
+  period: string,
+  previousPeriod: string | undefined,
+  requestedValue: number,
+): SalesOpinion {
+  const dre = computeDre(dreByExercicio[period] ?? {})
+  const ctx = makeIndicatorContext(accounts, dre, period)
 
-  const lucroAtual = dreValue("Lucro Líquido do Exercício", period)
-  const lucroAnterior = dreValue("Lucro Líquido do Exercício", PREVIOUS_PERIOD)
-  const tendenciaLucro = deltaPercent(lucroAtual, lucroAnterior)
+  const liquidez = INDICATORS.find((i) => i.id === "liquidez-corrente")!.compute(ctx) ?? 0
+  const endividamento = INDICATORS.find((i) => i.id === "endividamento-geral")!.compute(ctx) ?? 0
+  const margem = INDICATORS.find((i) => i.id === "margem-liquida")!.compute(ctx) ?? 0
 
-  const limit = suggestedCreditLimit(period)
+  const lucroAtual = dre["lucro-liquido"] ?? 0
+  const drePrev = previousPeriod ? computeDre(dreByExercicio[previousPeriod] ?? {}) : undefined
+  const lucroAnterior = drePrev?.["lucro-liquido"] ?? 0
+  const tendenciaLucro = deltaPercent(lucroAtual, lucroAnterior) ?? 0
+
+  const limit = suggestedCreditLimit(accounts, dre, dfc, period)
   const coverage = requestedValue > 0 ? limit / requestedValue : 0
 
   const criteria: OpinionCriterion[] = [
@@ -361,7 +676,7 @@ export function buildSalesOpinion(requestedValue: number, period: Period = LATES
     },
     {
       label: "Tendência do Lucro",
-      detail: `Variação vs ${PREVIOUS_PERIOD}`,
+      detail: previousPeriod ? `Variação vs ${previousPeriod}` : "Sem período anterior para comparar",
       value: `${tendenciaLucro >= 0 ? "+" : ""}${formatBRL(tendenciaLucro, 1)}%`,
       status: scoreBand(tendenciaLucro, 5, -5, true),
       weight: 0.15,
@@ -394,14 +709,16 @@ export function buildSalesOpinion(requestedValue: number, period: Period = LATES
 
   const narrative: string[] = []
   narrative.push(
-    `A ${COMPANY.name} apresenta liquidez corrente de ${formatRatio(liquidez)} e endividamento de ${formatPercent(
+    `A empresa apresenta liquidez corrente de ${formatRatio(liquidez)} e endividamento de ${formatPercent(
       endividamento,
     )} no período ${period}, com margem líquida de ${formatPercent(margem)}.`,
   )
   narrative.push(
-    tendenciaLucro >= 0
-      ? `O lucro líquido cresceu ${formatBRL(tendenciaLucro, 1)}% frente a ${PREVIOUS_PERIOD}, reforçando a capacidade de pagamento.`
-      : `O lucro líquido recuou ${formatBRL(Math.abs(tendenciaLucro), 1)}% frente a ${PREVIOUS_PERIOD}, o que exige atenção na análise.`,
+    previousPeriod
+      ? tendenciaLucro >= 0
+        ? `O lucro líquido cresceu ${formatBRL(tendenciaLucro, 1)}% frente a ${previousPeriod}, reforçando a capacidade de pagamento.`
+        : `O lucro líquido recuou ${formatBRL(Math.abs(tendenciaLucro), 1)}% frente a ${previousPeriod}, o que exige atenção na análise.`
+      : `Ainda não há período anterior tabulado para comparação de tendência.`,
   )
   if (requestedValue > 0) {
     narrative.push(

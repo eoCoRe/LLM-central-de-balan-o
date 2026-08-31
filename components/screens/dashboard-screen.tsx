@@ -1,25 +1,36 @@
 "use client"
 
+import { useMemo } from "react"
 import { ArrowDownRight, ArrowUpRight } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 import { Sparkline } from "@/components/sparkline"
+import { useFinancialStore } from "@/lib/store"
 import {
-  PERIODS,
   accountTotalByName,
+  computeDre,
   deltaPercent,
   formatBRL,
   formatRatio,
   INDICATORS,
-  type Period,
+  makeIndicatorContext,
+  type IndicatorContext,
 } from "@/lib/financial-data"
 import { cn } from "@/lib/utils"
 
-const CURRENT: Period = "1T2026"
-const PREVIOUS: Period = "1T2025"
+const liquidezCorrente = INDICATORS.find((i) => i.id === "liquidez-corrente")!
 
-const liquidezCorrente = INDICATORS.find((i) => i.name === "Liquidez Corrente")!
+function fmtBRLMaybe(value: number | undefined, decimals = 0): string {
+  return value === undefined ? "—" : formatBRL(value, decimals)
+}
 
-function TrendBadge({ delta, invert = false }: { delta: number; invert?: boolean }) {
+function TrendBadge({ delta, invert = false }: { delta: number | undefined; invert?: boolean }) {
+  if (delta === undefined) {
+    return (
+      <span className="inline-flex items-center gap-0.5 rounded bg-muted px-1 py-0.5 font-mono text-xs tabular-nums text-muted-foreground">
+        —
+      </span>
+    )
+  }
   const up = delta >= 0
   const good = invert ? !up : up
   const Icon = up ? ArrowUpRight : ArrowDownRight
@@ -46,7 +57,7 @@ function KpiCard({
   label: string
   value: string
   unit: string
-  delta: number
+  delta: number | undefined
 }) {
   return (
     <div className="rounded-md border border-border bg-card p-4">
@@ -72,7 +83,7 @@ const ALERTS = [
   {
     tone: "attention" as const,
     title: "Estoques em crescimento",
-    detail: "Estoques subiram 10,7% em relação a 4T2024, acima da receita.",
+    detail: "Estoques subiram 10,7% em relação ao período mais antigo, acima da receita.",
   },
   {
     tone: "ok" as const,
@@ -88,45 +99,73 @@ const toneDot: Record<string, string> = {
 }
 
 export function DashboardScreen() {
-  const ativo = accountTotalByName("Ativo", CURRENT)
-  const passivoTotal =
-    accountTotalByName("Passivo Circulante", CURRENT) +
-    accountTotalByName("Exigível a Longo Prazo", CURRENT)
-  const pl = accountTotalByName("Patrimônio Líquido", CURRENT)
-  const lc = liquidezCorrente.compute(CURRENT)
+  const store = useFinancialStore()
+  const exercicioIds = useMemo(() => store.exercicios.map((e) => e.id), [store.exercicios])
+  const current = exercicioIds[exercicioIds.length - 1]
+  const previous = exercicioIds[exercicioIds.length - 2]
 
-  const ativoPrev = accountTotalByName("Ativo", PREVIOUS)
+  const ctxByPeriod = useMemo(() => {
+    const out: Record<string, IndicatorContext> = {}
+    for (const id of exercicioIds) {
+      out[id] = makeIndicatorContext(store.accounts, computeDre(store.dreByExercicio[id] ?? {}), id)
+    }
+    return out
+  }, [exercicioIds, store.accounts, store.dreByExercicio])
+
+  const ativo = current ? accountTotalByName(store.accounts, "Ativo", current) : undefined
+  const passivoCirc = current ? accountTotalByName(store.accounts, "Passivo Circulante", current) : undefined
+  const exigivelLP = current ? accountTotalByName(store.accounts, "Exigível a Longo Prazo", current) : undefined
+  const passivoTotal = passivoCirc !== undefined && exigivelLP !== undefined ? passivoCirc + exigivelLP : undefined
+  const pl = current ? accountTotalByName(store.accounts, "Patrimônio Líquido", current) : undefined
+  const lc = current ? liquidezCorrente.compute(ctxByPeriod[current]) : undefined
+
+  const ativoPrev = previous ? accountTotalByName(store.accounts, "Ativo", previous) : undefined
+  const passivoCircPrev = previous ? accountTotalByName(store.accounts, "Passivo Circulante", previous) : undefined
+  const exigivelLPPrev = previous ? accountTotalByName(store.accounts, "Exigível a Longo Prazo", previous) : undefined
   const passivoPrev =
-    accountTotalByName("Passivo Circulante", PREVIOUS) + accountTotalByName("Exigível a Longo Prazo", PREVIOUS)
-  const plPrev = accountTotalByName("Patrimônio Líquido", PREVIOUS)
-  const lcPrev = liquidezCorrente.compute(PREVIOUS)
+    passivoCircPrev !== undefined && exigivelLPPrev !== undefined ? passivoCircPrev + exigivelLPPrev : undefined
+  const plPrev = previous ? accountTotalByName(store.accounts, "Patrimônio Líquido", previous) : undefined
+  const lcPrev = previous ? liquidezCorrente.compute(ctxByPeriod[previous]) : undefined
 
   const comparison = INDICATORS.slice(0, 4).map((ind) => ({
     name: ind.name,
     unit: ind.unit,
-    values: PERIODS.map((p) => ind.compute(p)),
+    values: exercicioIds.map((id) => ind.compute(ctxByPeriod[id])),
   }))
+
+  const sparkValues = exercicioIds.map((id) => liquidezCorrente.compute(ctxByPeriod[id]))
+  const sparkReady = sparkValues.length > 1 && sparkValues.every((v): v is number => v !== undefined)
 
   return (
     <div className="flex flex-col">
       <PageHeader
         eyebrow="Visão geral"
         title="Dashboard"
-        subtitle="Resumo da posição financeira e indicadores-chave do período 1T2026."
+        subtitle={`Resumo da posição financeira e indicadores-chave do período ${current ?? "—"}.`}
       />
 
       <div className="flex flex-col gap-6 px-8 py-6">
         {/* KPIs */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <KpiCard label="Ativo Total" value={formatBRL(ativo, 0)} unit="mil BRL" delta={deltaPercent(ativo, ativoPrev)} />
+          <KpiCard label="Ativo Total" value={fmtBRLMaybe(ativo)} unit="mil BRL" delta={deltaPercent(ativo, ativoPrev)} />
           <KpiCard
             label="Passivo Total"
-            value={formatBRL(passivoTotal, 0)}
+            value={fmtBRLMaybe(passivoTotal)}
             unit="mil BRL"
             delta={deltaPercent(passivoTotal, passivoPrev)}
           />
-          <KpiCard label="Patrimônio Líquido" value={formatBRL(pl, 0)} unit="mil BRL" delta={deltaPercent(pl, plPrev)} />
-          <KpiCard label="Liquidez Corrente" value={formatRatio(lc)} unit="índice" delta={deltaPercent(lc, lcPrev)} />
+          <KpiCard
+            label="Patrimônio Líquido"
+            value={fmtBRLMaybe(pl)}
+            unit="mil BRL"
+            delta={deltaPercent(pl, plPrev)}
+          />
+          <KpiCard
+            label="Liquidez Corrente"
+            value={lc === undefined ? "—" : formatRatio(lc)}
+            unit="índice"
+            delta={deltaPercent(lc, lcPrev)}
+          />
         </div>
 
         {/* Gráfico + Alertas */}
@@ -135,10 +174,13 @@ export function DashboardScreen() {
             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Evolução</p>
             <h2 className="mt-1 text-sm font-semibold text-foreground">Liquidez Corrente</h2>
             <div className="mt-4 h-52">
-              <Sparkline
-                points={PERIODS.map((p) => liquidezCorrente.compute(p))}
-                labels={[...PERIODS]}
-              />
+              {sparkReady ? (
+                <Sparkline points={sparkValues as number[]} labels={exercicioIds} />
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                  Dados insuficientes para exibir a evolução.
+                </div>
+              )}
             </div>
           </div>
 
@@ -169,9 +211,9 @@ export function DashboardScreen() {
             <thead>
               <tr className="border-b border-border text-muted-foreground">
                 <th className="px-5 py-2.5 text-left text-xs font-medium">Indicador</th>
-                {PERIODS.map((p) => (
-                  <th key={p} className="px-5 py-2.5 text-right text-xs font-medium tabular-nums">
-                    {p}
+                {exercicioIds.map((id) => (
+                  <th key={id} className="px-5 py-2.5 text-right text-xs font-medium tabular-nums">
+                    {id}
                   </th>
                 ))}
                 <th className="px-5 py-2.5 text-right text-xs font-medium">Δ período</th>
@@ -187,7 +229,7 @@ export function DashboardScreen() {
                     <td className="px-5 py-2.5 text-foreground">{row.name}</td>
                     {row.values.map((val, i) => (
                       <td key={i} className="px-5 py-2.5 text-right font-mono tabular-nums text-foreground">
-                        {row.unit === "percent" ? `${formatBRL(val, 1)}%` : formatRatio(val)}
+                        {val === undefined ? "—" : row.unit === "percent" ? `${formatBRL(val, 1)}%` : formatRatio(val)}
                       </td>
                     ))}
                     <td className="px-5 py-2.5 text-right">

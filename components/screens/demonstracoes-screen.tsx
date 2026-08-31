@@ -1,19 +1,21 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Check } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 import { ScaleToggle } from "@/components/scale-toggle"
+import { useFinancialStore } from "@/lib/store"
 import {
-  CHART_OF_ACCOUNTS,
-  DFC,
-  DRE,
-  PERIODS,
+  DRE_LINES,
+  collectLeaves,
+  computeDre,
+  flattenAccounts,
   formatScaled,
   sumAccount,
   type Account,
-  type DreLine,
+  type DreLineDef,
   type Scale,
+  type StaticLine,
 } from "@/lib/financial-data"
 import { cn } from "@/lib/utils"
 
@@ -26,22 +28,6 @@ const SUB_TABS: { id: SubTab; label: string }[] = [
   { id: "balancete", label: "Balancete" },
 ]
 
-function flatten(accounts: Account[], depth = 0, out: { account: Account; depth: number }[] = []) {
-  for (const account of accounts) {
-    out.push({ account, depth })
-    if (account.children) flatten(account.children, depth + 1, out)
-  }
-  return out
-}
-
-function collectLeaves(accounts: Account[], out: Account[] = []) {
-  for (const account of accounts) {
-    if (account.values) out.push(account)
-    if (account.children) collectLeaves(account.children, out)
-  }
-  return out
-}
-
 function TableShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="overflow-hidden rounded-md border border-border bg-card">
@@ -50,19 +36,19 @@ function TableShell({ children }: { children: React.ReactNode }) {
   )
 }
 
-function Head() {
+function Head({ exercicioIds }: { exercicioIds: string[] }) {
   return (
     <thead>
       <tr className="border-b border-border">
         <th className="px-4 py-2.5 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Descrição
         </th>
-        {PERIODS.map((p) => (
+        {exercicioIds.map((id) => (
           <th
-            key={p}
+            key={id}
             className="w-40 px-4 py-2.5 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
           >
-            {p}
+            {id}
           </th>
         ))}
       </tr>
@@ -70,11 +56,11 @@ function Head() {
   )
 }
 
-function BalancoTable({ scale }: { scale: Scale }) {
-  const rows = flatten(CHART_OF_ACCOUNTS)
+function BalancoTable({ accounts, exercicioIds, scale }: { accounts: Account[]; exercicioIds: string[]; scale: Scale }) {
+  const rows = flattenAccounts(accounts)
   return (
     <TableShell>
-      <Head />
+      <Head exercicioIds={exercicioIds} />
       <tbody>
         {rows.map(({ account, depth }) => {
           const hasChildren = !!account.children?.length
@@ -98,16 +84,16 @@ function BalancoTable({ scale }: { scale: Scale }) {
                   {account.name}
                 </span>
               </td>
-              {PERIODS.map((p) => (
+              {exercicioIds.map((id) => (
                 <td
-                  key={p}
+                  key={id}
                   className={cn(
                     "px-4 py-1.5 text-right font-mono tabular-nums",
                     hasChildren ? "font-semibold text-foreground" : "text-muted-foreground",
                     isRoot && "underline decoration-border decoration-2 underline-offset-4",
                   )}
                 >
-                  {formatScaled(sumAccount(account, p), scale)}
+                  {formatScaled(sumAccount(account, id), scale)}
                 </td>
               ))}
             </tr>
@@ -118,22 +104,24 @@ function BalancoTable({ scale }: { scale: Scale }) {
   )
 }
 
-function StatementTable({ lines, scale }: { lines: DreLine[]; scale: Scale }) {
+function DreTable({
+  exercicioIds,
+  computedByPeriod,
+  scale,
+}: {
+  exercicioIds: string[]
+  computedByPeriod: Record<string, Record<string, number | undefined>>
+  scale: Scale
+}) {
   return (
     <TableShell>
-      <Head />
+      <Head exercicioIds={exercicioIds} />
       <tbody>
-        {lines.map((line) => {
-          const isTotal = line.kind === "total"
-          const isSubtotal = line.kind === "subtotal"
+        {DRE_LINES.map((line: DreLineDef) => {
+          const isTotal = !!line.isTotal
+          const isSubtotal = line.kind === "computed" && !isTotal
           return (
-            <tr
-              key={line.name}
-              className={cn(
-                "border-b border-border last:border-0",
-                isTotal && "bg-primary/[0.03]",
-              )}
-            >
+            <tr key={line.id} className={cn("border-b border-border last:border-0", isTotal && "bg-primary/[0.03]")}>
               <td
                 className={cn(
                   "px-4 py-1.5 text-foreground",
@@ -142,21 +130,67 @@ function StatementTable({ lines, scale }: { lines: DreLine[]; scale: Scale }) {
               >
                 {line.name}
               </td>
-              {PERIODS.map((p) => (
+              {exercicioIds.map((id) => {
+                const value = computedByPeriod[id]?.[line.id]
+                return (
+                  <td
+                    key={id}
+                    className={cn(
+                      "px-4 py-1.5 text-right font-mono tabular-nums",
+                      isTotal
+                        ? "font-semibold text-foreground underline decoration-border decoration-2 underline-offset-4"
+                        : isSubtotal
+                          ? "font-medium text-foreground"
+                          : value !== undefined && value < 0
+                            ? "text-risk"
+                            : "text-muted-foreground",
+                    )}
+                  >
+                    {formatScaled(value, scale)}
+                  </td>
+                )
+              })}
+            </tr>
+          )
+        })}
+      </tbody>
+    </TableShell>
+  )
+}
+
+function StaticStatementTable({ lines, exercicioIds, scale }: { lines: StaticLine[]; exercicioIds: string[]; scale: Scale }) {
+  return (
+    <TableShell>
+      <Head exercicioIds={exercicioIds} />
+      <tbody>
+        {lines.map((line) => {
+          const isTotal = line.kind === "total"
+          const isSubtotal = line.kind === "subtotal"
+          return (
+            <tr key={line.name} className={cn("border-b border-border last:border-0", isTotal && "bg-primary/[0.03]")}>
+              <td
+                className={cn(
+                  "px-4 py-1.5 text-foreground",
+                  isTotal ? "font-semibold" : isSubtotal ? "font-medium" : "",
+                )}
+              >
+                {line.name}
+              </td>
+              {exercicioIds.map((id) => (
                 <td
-                  key={p}
+                  key={id}
                   className={cn(
                     "px-4 py-1.5 text-right font-mono tabular-nums",
                     isTotal
                       ? "font-semibold text-foreground underline decoration-border decoration-2 underline-offset-4"
                       : isSubtotal
                         ? "font-medium text-foreground"
-                        : line.values[p] < 0
+                        : (line.values[id] ?? 0) < 0
                           ? "text-risk"
                           : "text-muted-foreground",
                   )}
                 >
-                  {formatScaled(line.values[p], scale)}
+                  {formatScaled(line.values[id], scale)}
                 </td>
               ))}
             </tr>
@@ -167,9 +201,8 @@ function StatementTable({ lines, scale }: { lines: DreLine[]; scale: Scale }) {
   )
 }
 
-function BalanceteTable({ scale }: { scale: Scale }) {
-  const leaves = collectLeaves(CHART_OF_ACCOUNTS)
-  const p = PERIODS[PERIODS.length - 1]
+function BalanceteTable({ accounts, period, scale }: { accounts: Account[]; period: string | undefined; scale: Scale }) {
+  const leaves = collectLeaves(accounts)
   return (
     <TableShell>
       <thead>
@@ -181,7 +214,7 @@ function BalanceteTable({ scale }: { scale: Scale }) {
             Conta
           </th>
           <th className="w-40 px-4 py-2.5 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Saldo {p}
+            Saldo {period ?? "—"}
           </th>
         </tr>
       </thead>
@@ -191,7 +224,7 @@ function BalanceteTable({ scale }: { scale: Scale }) {
             <td className="px-4 py-1.5 font-mono text-xs tabular-nums text-muted-foreground">{account.code}</td>
             <td className="px-4 py-1.5 text-foreground">{account.name}</td>
             <td className="px-4 py-1.5 text-right font-mono tabular-nums text-foreground">
-              {formatScaled(sumAccount(account, p), scale)}
+              {period ? formatScaled(sumAccount(account, period), scale) : "—"}
             </td>
           </tr>
         ))}
@@ -201,15 +234,26 @@ function BalanceteTable({ scale }: { scale: Scale }) {
 }
 
 export function DemonstracoesScreen() {
+  const store = useFinancialStore()
   const [tab, setTab] = useState<SubTab>("balanco")
   const [scale, setScale] = useState<Scale>("milhares")
 
-  const ativo = CHART_OF_ACCOUNTS.find((a) => a.name === "Ativo")!
-  const passivo = CHART_OF_ACCOUNTS.find((a) => a.name === "Passivo")!
-  const checks = PERIODS.map((p) => ({
-    period: p,
-    ok: sumAccount(ativo, p) === sumAccount(passivo, p),
-  }))
+  const exercicioIds = useMemo(() => store.exercicios.map((e) => e.id), [store.exercicios])
+  const lastPeriod = exercicioIds[exercicioIds.length - 1]
+
+  const computedByPeriod = useMemo(() => {
+    const out: Record<string, Record<string, number | undefined>> = {}
+    for (const id of exercicioIds) out[id] = computeDre(store.dreByExercicio[id] ?? {})
+    return out
+  }, [exercicioIds, store.dreByExercicio])
+
+  const ativo = store.accounts.find((a) => a.name === "Ativo")
+  const passivo = store.accounts.find((a) => a.name === "Passivo")
+  const checks = exercicioIds.map((id) => {
+    const a = ativo ? sumAccount(ativo, id) : undefined
+    const p = passivo ? sumAccount(passivo, id) : undefined
+    return { period: id, ok: a !== undefined && p !== undefined && a === p }
+  })
 
   return (
     <div className="flex flex-col">
@@ -244,10 +288,10 @@ export function DemonstracoesScreen() {
       </div>
 
       <div className="px-8 py-6">
-        {tab === "balanco" && <BalancoTable scale={scale} />}
-        {tab === "dre" && <StatementTable lines={DRE} scale={scale} />}
-        {tab === "dfc" && <StatementTable lines={DFC} scale={scale} />}
-        {tab === "balancete" && <BalanceteTable scale={scale} />}
+        {tab === "balanco" && <BalancoTable accounts={store.accounts} exercicioIds={exercicioIds} scale={scale} />}
+        {tab === "dre" && <DreTable exercicioIds={exercicioIds} computedByPeriod={computedByPeriod} scale={scale} />}
+        {tab === "dfc" && <StaticStatementTable lines={store.dfc} exercicioIds={exercicioIds} scale={scale} />}
+        {tab === "balancete" && <BalanceteTable accounts={store.accounts} period={lastPeriod} scale={scale} />}
       </div>
 
       {/* Barra escura de verificação */}

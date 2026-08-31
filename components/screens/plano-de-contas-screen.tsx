@@ -1,31 +1,60 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronRight, GripVertical, Plus } from "lucide-react"
+import { Check, ChevronRight, FolderPlus, Pencil, Plus, Trash2, X } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 import { ScaleToggle } from "@/components/scale-toggle"
 import { Button } from "@/components/ui/button"
-import {
-  CHART_OF_ACCOUNTS,
-  PERIODS,
-  formatScaled,
-  sumAccount,
-  type Account,
-  type Scale,
-} from "@/lib/financial-data"
+import { useFinancialStore } from "@/lib/store"
+import { flattenAccounts, formatScaled, sumAccount, type Account, type Scale } from "@/lib/financial-data"
 import { cn } from "@/lib/utils"
+
+interface DraftState {
+  parentCode: string | null
+  isGroup: boolean
+}
 
 interface TreeRowProps {
   account: Account
   depth: number
   expanded: Set<string>
   onToggle: (code: string) => void
+  editingCode: string | null
+  onStartEdit: (code: string) => void
+  onCommitEdit: (code: string, name: string) => void
+  onCancelEdit: () => void
+  onDelete: (code: string) => void
+  draft: DraftState | null
+  onStartDraft: (parentCode: string | null, isGroup: boolean) => void
+  onCommitDraft: (name: string) => void
+  onCancelDraft: () => void
 }
 
-function TreeRow({ account, depth, expanded, onToggle }: TreeRowProps) {
-  const hasChildren = !!account.children?.length
+function TreeRow(props: TreeRowProps) {
+  const {
+    account,
+    depth,
+    expanded,
+    onToggle,
+    editingCode,
+    onStartEdit,
+    onCommitEdit,
+    onCancelEdit,
+    onDelete,
+    draft,
+    onStartDraft,
+    onCommitDraft,
+    onCancelDraft,
+  } = props
+  const hasChildren = !!account.children
+  const hasChildItems = !!account.children?.length
   const isOpen = expanded.has(account.code)
   const isRoot = depth === 0
+  const isEditing = editingCode === account.code
+  const [nameDraft, setNameDraft] = useState(account.name)
+  const [draftName, setDraftName] = useState("")
+
+  const showDraftHere = draft?.parentCode === account.code
 
   return (
     <>
@@ -36,8 +65,6 @@ function TreeRow({ account, depth, expanded, onToggle }: TreeRowProps) {
         )}
         style={{ paddingLeft: `${depth * 20 + 8}px` }}
       >
-        <GripVertical className="size-3.5 shrink-0 cursor-grab text-muted-foreground/0 transition-colors group-hover:text-muted-foreground/60" />
-
         {hasChildren ? (
           <button
             type="button"
@@ -53,14 +80,30 @@ function TreeRow({ account, depth, expanded, onToggle }: TreeRowProps) {
         )}
 
         <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">{account.code}</span>
-        <span
-          className={cn(
-            "flex-1 truncate text-sm",
-            isRoot ? "font-semibold text-foreground" : hasChildren ? "font-medium text-foreground" : "text-foreground",
-          )}
-        >
-          {account.name}
-        </span>
+
+        {isEditing ? (
+          <input
+            autoFocus
+            value={nameDraft}
+            onChange={(e) => setNameDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onCommitEdit(account.code, nameDraft)
+              if (e.key === "Escape") onCancelEdit()
+            }}
+            onBlur={() => onCommitEdit(account.code, nameDraft)}
+            className="flex-1 rounded border border-ring bg-background px-1.5 py-0.5 text-sm text-foreground outline-none"
+          />
+        ) : (
+          <span
+            className={cn(
+              "flex-1 truncate text-sm",
+              isRoot ? "font-semibold text-foreground" : hasChildren ? "font-medium text-foreground" : "text-foreground",
+            )}
+          >
+            {account.name}
+          </span>
+        )}
+
         <span
           className={cn(
             "rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide",
@@ -69,21 +112,100 @@ function TreeRow({ account, depth, expanded, onToggle }: TreeRowProps) {
         >
           {hasChildren ? "Grupo" : "Analítica"}
         </span>
+
+        <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+          <button
+            type="button"
+            onClick={() => onStartEdit(account.code)}
+            className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-label={`Renomear ${account.name}`}
+          >
+            <Pencil className="size-3.5" />
+          </button>
+          {hasChildren && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isOpen) onToggle(account.code)
+                  onStartDraft(account.code, false)
+                }}
+                className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label={`Adicionar conta analítica em ${account.name}`}
+                title="Adicionar conta analítica"
+              >
+                <Plus className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isOpen) onToggle(account.code)
+                  onStartDraft(account.code, true)
+                }}
+                className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label={`Adicionar subgrupo em ${account.name}`}
+                title="Adicionar subgrupo"
+              >
+                <FolderPlus className="size-3.5" />
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={() => onDelete(account.code)}
+            className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-risk-muted hover:text-risk"
+            aria-label={`Excluir ${account.name}`}
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        </div>
       </div>
 
-      {hasChildren &&
+      {hasChildItems &&
         isOpen &&
         account.children!.map((child) => (
-          <TreeRow key={child.code} account={child} depth={depth + 1} expanded={expanded} onToggle={onToggle} />
+          <TreeRow key={child.code} {...props} account={child} depth={depth + 1} />
         ))}
+
+      {showDraftHere && (
+        <div className="flex items-center gap-2 rounded-md bg-primary/[0.04] py-1.5 pr-2" style={{ paddingLeft: `${(depth + 1) * 20 + 8 + 20}px` }}>
+          <input
+            autoFocus
+            value={draftName}
+            onChange={(e) => setDraftName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                onCommitDraft(draftName)
+                setDraftName("")
+              }
+              if (e.key === "Escape") onCancelDraft()
+            }}
+            placeholder={draft?.isGroup ? "Nome do subgrupo" : "Nome da conta analítica"}
+            className="flex-1 rounded border border-ring bg-background px-1.5 py-0.5 text-sm text-foreground outline-none"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              onCommitDraft(draftName)
+              setDraftName("")
+            }}
+            className="flex size-6 items-center justify-center rounded text-ok hover:bg-ok-muted"
+            aria-label="Confirmar"
+          >
+            <Check className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={onCancelDraft}
+            className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-muted"
+            aria-label="Cancelar"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+      )}
     </>
   )
-}
-
-interface PreviewRowProps {
-  account: Account
-  depth: number
-  scale: Scale
 }
 
 function flattenForPreview(accounts: Account[], depth = 0): { account: Account; depth: number }[] {
@@ -93,38 +215,32 @@ function flattenForPreview(accounts: Account[], depth = 0): { account: Account; 
   ])
 }
 
-function PreviewRow({ account, depth, scale }: PreviewRowProps) {
+function PreviewRow({ account, depth, scale, period }: { account: Account; depth: number; scale: Scale; period: string }) {
   const hasChildren = !!account.children?.length
   const isRoot = depth === 0
   return (
     <tr className={cn("border-b border-border last:border-0", isRoot && "bg-primary/[0.03]")}>
       <td className="py-1.5 pr-2 text-xs" style={{ paddingLeft: `${depth * 14 + 12}px` }}>
-        <span
-          className={cn(
-            "text-foreground",
-            isRoot ? "font-semibold" : hasChildren ? "font-medium" : "text-muted-foreground",
-          )}
-        >
+        <span className={cn("text-foreground", isRoot ? "font-semibold" : hasChildren ? "font-medium" : "text-muted-foreground")}>
           {account.name}
         </span>
       </td>
-      <td
-        className={cn(
-          "py-1.5 pr-3 text-right font-mono text-xs tabular-nums",
-          hasChildren ? "font-semibold text-foreground" : "text-muted-foreground",
-        )}
-      >
-        {formatScaled(sumAccount(account, PERIODS[PERIODS.length - 1]), scale)}
+      <td className={cn("py-1.5 pr-3 text-right font-mono text-xs tabular-nums", hasChildren ? "font-semibold text-foreground" : "text-muted-foreground")}>
+        {formatScaled(sumAccount(account, period), scale)}
       </td>
     </tr>
   )
 }
 
 export function PlanoDeContasScreen() {
-  const [expanded, setExpanded] = useState<Set<string>>(
-    () => new Set(["1", "1.1", "2", "2.1", "2.3"]),
-  )
+  const store = useFinancialStore()
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set(["1", "1.1", "2", "2.1", "2.3"]))
   const [scale, setScale] = useState<Scale>("milhares")
+  const [editingCode, setEditingCode] = useState<string | null>(null)
+  const [draft, setDraft] = useState<DraftState | null>(null)
+  const [rootDraftName, setRootDraftName] = useState("")
+
+  const latestPeriod = store.exercicios[store.exercicios.length - 1]?.id ?? ""
 
   const toggle = (code: string) => {
     setExpanded((prev) => {
@@ -135,7 +251,29 @@ export function PlanoDeContasScreen() {
     })
   }
 
-  const previewRows = flattenForPreview(CHART_OF_ACCOUNTS)
+  const handleCommitEdit = (code: string, name: string) => {
+    if (name.trim()) store.renameAccountNode(code, name.trim())
+    setEditingCode(null)
+  }
+
+  const handleDelete = (code: string) => {
+    const flat = flattenAccounts(store.accounts)
+    const node = flat.find((r) => r.account.code === code)?.account
+    const label = node?.name ?? code
+    if (confirm(`Excluir "${label}" e todas as suas subcontas? Os valores lançados serão perdidos.`)) {
+      store.deleteAccountNode(code)
+    }
+  }
+
+  const handleCommitDraft = (name: string) => {
+    if (name.trim() && draft) {
+      store.addAccountNode(draft.parentCode, name.trim(), draft.isGroup)
+    }
+    setDraft(null)
+    setRootDraftName("")
+  }
+
+  const previewRows = flattenForPreview(store.accounts)
 
   return (
     <div className="flex flex-col">
@@ -146,8 +284,8 @@ export function PlanoDeContasScreen() {
         actions={
           <>
             <ScaleToggle value={scale} onChange={setScale} />
-            <Button size="sm" className="h-8 gap-1.5">
-              <Plus className="size-3.5" />
+            <Button size="sm" className="h-8 gap-1.5" onClick={() => setDraft({ parentCode: null, isGroup: true })}>
+              <FolderPlus className="size-3.5" />
               Grupo raiz
             </Button>
           </>
@@ -158,19 +296,73 @@ export function PlanoDeContasScreen() {
         {/* Árvore */}
         <div className="border-b border-border px-8 py-6 xl:border-b-0 xl:border-r">
           <div className="rounded-md border border-border bg-card p-2">
-            {CHART_OF_ACCOUNTS.map((account) => (
-              <TreeRow key={account.code} account={account} depth={0} expanded={expanded} onToggle={toggle} />
+            {store.accounts.map((account) => (
+              <TreeRow
+                key={account.code}
+                account={account}
+                depth={0}
+                expanded={expanded}
+                onToggle={toggle}
+                editingCode={editingCode}
+                onStartEdit={setEditingCode}
+                onCommitEdit={handleCommitEdit}
+                onCancelEdit={() => setEditingCode(null)}
+                onDelete={handleDelete}
+                draft={draft}
+                onStartDraft={(parentCode, isGroup) => setDraft({ parentCode, isGroup })}
+                onCommitDraft={handleCommitDraft}
+                onCancelDraft={() => setDraft(null)}
+              />
             ))}
+
+            {draft?.parentCode === null && (
+              <div className="flex items-center gap-2 rounded-md bg-primary/[0.04] py-1.5 pr-2 pl-4">
+                <input
+                  autoFocus
+                  value={rootDraftName}
+                  onChange={(e) => setRootDraftName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleCommitDraft(rootDraftName)
+                    if (e.key === "Escape") {
+                      setDraft(null)
+                      setRootDraftName("")
+                    }
+                  }}
+                  placeholder="Nome do grupo raiz"
+                  className="flex-1 rounded border border-ring bg-background px-1.5 py-0.5 text-sm text-foreground outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleCommitDraft(rootDraftName)}
+                  className="flex size-6 items-center justify-center rounded text-ok hover:bg-ok-muted"
+                  aria-label="Confirmar"
+                >
+                  <Check className="size-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDraft(null)
+                    setRootDraftName("")
+                  }}
+                  className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-muted"
+                  aria-label="Cancelar"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            )}
           </div>
           <p className="mt-3 text-xs text-muted-foreground">
-            Passe o mouse sobre uma linha para reordenar. Contas analíticas recebem valores na Tabulação.
+            Passe o mouse sobre uma linha para renomear, adicionar subconta ou excluir. Contas analíticas recebem
+            valores na Tabulação.
           </p>
         </div>
 
         {/* Preview */}
         <aside className="px-8 py-6 xl:px-6">
           <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Preview da Tabulação</p>
-          <h2 className="mt-1 text-sm font-semibold text-foreground">Estrutura como tabela</h2>
+          <h2 className="mt-1 text-sm font-semibold text-foreground">Estrutura como tabela — {latestPeriod || "sem exercício"}</h2>
           <div className="mt-4 overflow-hidden rounded-md border border-border bg-card">
             <table className="w-full">
               <thead>
@@ -179,13 +371,13 @@ export function PlanoDeContasScreen() {
                     Conta
                   </th>
                   <th className="py-2 pr-3 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                    {PERIODS[PERIODS.length - 1]}
+                    {latestPeriod}
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {previewRows.map(({ account, depth }) => (
-                  <PreviewRow key={account.code} account={account} depth={depth} scale={scale} />
+                  <PreviewRow key={account.code} account={account} depth={depth} scale={scale} period={latestPeriod} />
                 ))}
               </tbody>
             </table>
