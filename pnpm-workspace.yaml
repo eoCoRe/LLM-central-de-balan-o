@@ -1,2 +1,10 @@
 allowBuilds:
+  '@prisma/engines': true
+  esbuild: true
+  msgpackr-extract: true
   msw: true
+  prisma: true
+  workerd: true
+
+overrides:
+  hono: 4.12.25

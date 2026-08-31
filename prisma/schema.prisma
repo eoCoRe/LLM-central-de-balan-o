@@ -1,0 +1,127 @@
+// Schema fiel ao DER do TCC (§5.2 em diagramas_modelo_proprio.md), com um adicional:
+// AuditLog, para persistir a trilha de auditoria (RF08) que hoje só existe no
+// localStorage do frontend. CONTA cobre Balanço, DRE e DFC — o campo `tipo`
+// distingue qual demonstração cada conta pertence, como o DER especifica.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// A URL de conexão fica em prisma.config.ts (usada pelo CLI) e é passada ao
+// driver adapter em lib/db.ts (usado em runtime) — Prisma 7 não aceita mais
+// `url` diretamente aqui.
+datasource db {
+  provider = "postgresql"
+}
+
+enum ContaTipo {
+  BP // Balanço Patrimonial
+  DRE
+  DFC
+}
+
+enum ExtracaoStatus {
+  PENDENTE
+  CONCLUIDA
+  ERRO
+}
+
+model Empresa {
+  id          Int         @id @default(autoincrement())
+  cnpj        String      @unique
+  razaoSocial String      @map("razao_social")
+  setor       String?
+  exercicios  Exercicio[]
+  auditLogs   AuditLog[]
+
+  @@map("empresa")
+}
+
+model Exercicio {
+  id         Int        @id @default(autoincrement())
+  empresaId  Int        @map("empresa_id")
+  empresa    Empresa    @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  periodo    String
+  auditado   Boolean    @default(false)
+  valores    Valor[]
+  extracoes  Extracao[]
+
+  @@unique([empresaId, periodo])
+  @@map("exercicio")
+}
+
+model Conta {
+  id               Int             @id @default(autoincrement())
+  contaPaiId       Int?            @map("conta_pai_id")
+  contaPai         Conta?          @relation("ContaHierarquia", fields: [contaPaiId], references: [id], onDelete: Cascade)
+  subcontas        Conta[]         @relation("ContaHierarquia")
+  codigo           String
+  descricao        String
+  tipo             ContaTipo
+  valores          Valor[]
+  valoresExtraidos ValorExtraido[]
+
+  @@unique([codigo, tipo])
+  @@map("conta")
+}
+
+model Valor {
+  id          Int       @id @default(autoincrement())
+  exercicioId Int       @map("exercicio_id")
+  exercicio   Exercicio @relation(fields: [exercicioId], references: [id], onDelete: Cascade)
+  contaId     Int       @map("conta_id")
+  conta       Conta     @relation(fields: [contaId], references: [id], onDelete: Cascade)
+  valor       Decimal   @db.Decimal(18, 2)
+
+  @@unique([exercicioId, contaId])
+  @@map("valor")
+}
+
+model Indice {
+  id      Int    @id @default(autoincrement())
+  nome    String @unique
+  formula String
+  unidade String
+
+  @@map("indice")
+}
+
+model Extracao {
+  id               Int             @id @default(autoincrement())
+  exercicioId      Int             @map("exercicio_id")
+  exercicio        Exercicio       @relation(fields: [exercicioId], references: [id], onDelete: Cascade)
+  arquivoOrigem    String          @map("arquivo_origem")
+  modeloLlm        String          @map("modelo_llm")
+  status           ExtracaoStatus  @default(PENDENTE)
+  criadoEm         DateTime        @default(now()) @map("criado_em")
+  valoresExtraidos ValorExtraido[]
+
+  @@map("extracao")
+}
+
+model ValorExtraido {
+  id           Int      @id @default(autoincrement())
+  extracaoId   Int      @map("extracao_id")
+  extracao     Extracao @relation(fields: [extracaoId], references: [id], onDelete: Cascade)
+  contaId      Int?     @map("conta_id")
+  conta        Conta?   @relation(fields: [contaId], references: [id], onDelete: SetNull)
+  valor        Decimal  @db.Decimal(18, 2)
+  paginaOrigem Int?     @map("pagina_origem")
+  confianca    Float
+
+  @@map("valor_extraido")
+}
+
+// Fora do DER original — persiste a trilha de auditoria (RF08) já usada nas
+// telas de Plano de Contas e Tabulação.
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  empresaId Int      @map("empresa_id")
+  empresa   Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  usuario   String
+  acao      String
+  detalhe   String
+  criadoEm  DateTime @default(now()) @map("criado_em")
+
+  @@map("audit_log")
+}
