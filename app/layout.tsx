@@ -20,7 +20,6 @@ export const metadata: Metadata = {
   title: 'Central de Balanços',
   description:
     'Plataforma de análise de balanços para analistas de crédito — Plano de Contas, Tabulação, Balanço, DRE, DFC e Índices Financeiros.',
-  generator: 'v0.app',
   icons: {
     icon: [
       {
