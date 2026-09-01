@@ -280,6 +280,8 @@ export interface Indicator {
   id: string
   name: string
   formula: string
+  // Explicação em uma frase, sem jargão contábil — para quem não é da área financeira.
+  description: string
   group: IndicatorGroup
   unit: IndicatorUnit
   higherIsBetter: boolean
@@ -305,6 +307,7 @@ export const INDICATORS: Indicator[] = [
     id: "liquidez-corrente",
     name: "Liquidez Corrente",
     formula: "[Ativo Circulante] / [Passivo Circulante]",
+    description: "Mostra se a empresa tem bens e direitos suficientes no curto prazo para pagar o que deve no curto prazo.",
     group: "Liquidez",
     unit: "ratio",
     higherIsBetter: true,
@@ -316,6 +319,7 @@ export const INDICATORS: Indicator[] = [
     id: "liquidez-seca",
     name: "Liquidez Seca",
     formula: "([Ativo Circulante] − [Estoques]) / [Passivo Circulante]",
+    description: "A mesma ideia da liquidez corrente, mas sem contar com a venda dos estoques — um teste mais rígido.",
     group: "Liquidez",
     unit: "ratio",
     higherIsBetter: true,
@@ -327,6 +331,7 @@ export const INDICATORS: Indicator[] = [
     id: "liquidez-geral",
     name: "Liquidez Geral",
     formula: "([Ativo Circulante] + [Ativo Realizável a Longo Prazo]) / ([Passivo Circulante] + [Exigível a Longo Prazo])",
+    description: "Compara tudo que a empresa vai receber (curto e longo prazo) com tudo que ela deve (curto e longo prazo).",
     group: "Liquidez",
     unit: "ratio",
     higherIsBetter: true,
@@ -342,6 +347,8 @@ export const INDICATORS: Indicator[] = [
     id: "liquidez-imediata",
     name: "Liquidez Imediata",
     formula: "[Disponibilidades] / [Passivo Circulante]",
+    description:
+      "Quanto a empresa tem em caixa e aplicações prontas para cobrir as dívidas de curto prazo, sem esperar receber nada.",
     group: "Liquidez",
     unit: "ratio",
     higherIsBetter: true,
@@ -353,6 +360,7 @@ export const INDICATORS: Indicator[] = [
     id: "endividamento-geral",
     name: "Endividamento Geral",
     formula: "[Passivo Total] / [Ativo Total]",
+    description: "Qual fatia de tudo que a empresa possui foi financiada com dívidas, em vez de capital próprio dos sócios.",
     group: "Endividamento",
     unit: "percent",
     higherIsBetter: false,
@@ -364,6 +372,7 @@ export const INDICATORS: Indicator[] = [
     id: "composicao-endividamento",
     name: "Composição do Endividamento",
     formula: "[Passivo Circulante] / [Passivo Total]",
+    description: "Das dívidas da empresa, quanto precisa ser pago logo (curto prazo) em vez de mais para frente.",
     group: "Endividamento",
     unit: "percent",
     higherIsBetter: false,
@@ -376,6 +385,8 @@ export const INDICATORS: Indicator[] = [
     id: "imobilizacao-pl",
     name: "Imobilização do PL",
     formula: "[Ativo Permanente] / [Patrimônio Líquido]",
+    description:
+      "Quanto do capital próprio da empresa está preso em bens fixos (imóveis, máquinas), sobrando menos para o giro do negócio.",
     group: "Endividamento",
     unit: "percent",
     higherIsBetter: false,
@@ -387,6 +398,7 @@ export const INDICATORS: Indicator[] = [
     id: "margem-bruta",
     name: "Margem Bruta",
     formula: "[Lucro Bruto] / [Receita Líquida]",
+    description: "De cada R$ 100 vendidos, quanto sobra depois de pagar o custo direto do produto ou serviço.",
     group: "Rentabilidade",
     unit: "percent",
     higherIsBetter: true,
@@ -398,6 +410,7 @@ export const INDICATORS: Indicator[] = [
     id: "margem-liquida",
     name: "Margem Líquida",
     formula: "[Lucro Líquido] / [Receita Líquida]",
+    description: "De cada R$ 100 vendidos, quanto vira lucro depois de todas as despesas e impostos.",
     group: "Rentabilidade",
     unit: "percent",
     higherIsBetter: true,
@@ -409,6 +422,7 @@ export const INDICATORS: Indicator[] = [
     id: "roe",
     name: "ROE",
     formula: "[Lucro Líquido] / [Patrimônio Líquido]",
+    description: "Quanto de lucro a empresa gerou para cada R$ 100 investidos pelos próprios sócios.",
     group: "Rentabilidade",
     unit: "percent",
     higherIsBetter: true,
@@ -420,6 +434,7 @@ export const INDICATORS: Indicator[] = [
     id: "roa",
     name: "ROA",
     formula: "[Lucro Líquido] / [Ativo Total]",
+    description: "Quanto de lucro a empresa gerou para cada R$ 100 que ela possui em bens e direitos, dívida incluída.",
     group: "Rentabilidade",
     unit: "percent",
     higherIsBetter: true,
@@ -431,6 +446,7 @@ export const INDICATORS: Indicator[] = [
     id: "giro-ativo",
     name: "Giro do Ativo",
     formula: "[Receita Líquida] / [Ativo Total]",
+    description: "Quantas vezes, no ano, a empresa transforma em vendas tudo que ela possui.",
     group: "Atividade",
     unit: "ratio",
     higherIsBetter: true,
@@ -442,6 +458,7 @@ export const INDICATORS: Indicator[] = [
     id: "pmre",
     name: "PMRE (Prazo Médio de Renovação de Estoques)",
     formula: "([Estoques] / |[CMV]|) × 360",
+    description: "Em média, quantos dias o estoque fica parado até ser vendido.",
     group: "Atividade",
     unit: "dias",
     higherIsBetter: false,
@@ -457,6 +474,7 @@ export const INDICATORS: Indicator[] = [
     id: "pmrv",
     name: "PMRV (Prazo Médio de Recebimento de Vendas)",
     formula: "([Contas a Receber] / [Receita Bruta]) × 360",
+    description: "Em média, quantos dias a empresa demora para receber dos clientes depois de vender.",
     group: "Atividade",
     unit: "dias",
     higherIsBetter: false,
@@ -471,6 +489,7 @@ export const INDICATORS: Indicator[] = [
     id: "pmpc",
     name: "PMPC (Prazo Médio de Pagamento de Compras)",
     formula: "([Fornecedores] / [Compras]) × 360",
+    description: "Em média, quantos dias a empresa demora para pagar seus fornecedores.",
     group: "Atividade",
     unit: "dias",
     higherIsBetter: true,
@@ -660,7 +679,7 @@ export function buildSalesOpinion(
   const criteria: OpinionCriterion[] = [
     {
       label: "Liquidez Corrente",
-      detail: "Capacidade de honrar obrigações de curto prazo",
+      detail: "Se a empresa consegue pagar as contas de curto prazo com o que tem disponível",
       value: formatRatio(liquidez),
       status: scoreBand(liquidez, 1.5, 1.0, true),
       weight: 0.2,
@@ -668,7 +687,7 @@ export function buildSalesOpinion(
     },
     {
       label: "Endividamento",
-      detail: "Participação de capital de terceiros sobre o ativo",
+      detail: "Quanto do que a empresa tem foi financiado com dívidas, em vez de capital próprio",
       value: formatPercent(endividamento),
       status: scoreBand(endividamento, 50, 70, false),
       weight: 0.2,
@@ -676,7 +695,7 @@ export function buildSalesOpinion(
     },
     {
       label: "Margem Líquida",
-      detail: "Rentabilidade sobre a receita líquida",
+      detail: "De cada R$ 100 vendidos, quanto vira lucro",
       value: formatPercent(margem),
       status: scoreBand(margem, 5, 2, true),
       weight: 0.2,
@@ -684,7 +703,7 @@ export function buildSalesOpinion(
     },
     {
       label: "Tendência do Lucro",
-      detail: previousPeriod ? `Variação vs ${previousPeriod}` : "Sem período anterior para comparar",
+      detail: previousPeriod ? `Lucro comparado ao período anterior (${previousPeriod})` : "Sem período anterior para comparar",
       value: `${tendenciaLucro >= 0 ? "+" : ""}${formatBRL(tendenciaLucro, 1)}%`,
       status: scoreBand(tendenciaLucro, 5, -5, true),
       weight: 0.15,
@@ -692,7 +711,7 @@ export function buildSalesOpinion(
     },
     {
       label: "Cobertura da Solicitação",
-      detail: "Limite sugerido sobre o valor solicitado",
+      detail: "Quanto do valor pedido a empresa consegue cobrir com segurança",
       value: requestedValue > 0 ? `${formatBRL(coverage, 2)}×` : "—",
       status: requestedValue > 0 ? scoreBand(coverage, 1, 0.75, true) : "atencao",
       weight: 0.25,
@@ -715,33 +734,50 @@ export function buildSalesOpinion(
         ? "Operação viável mediante condições e garantias adicionais."
         : "Operação não recomendada no valor solicitado."
 
+  // Frases curtas, em linguagem simples primeiro — o número técnico vem entre
+  // parênteses como apoio, não como a informação principal (RN — parecer legível
+  // por quem não é da área financeira).
+  const liquidezCriterion = criteria.find((c) => c.label === "Liquidez Corrente")!
+  const endividamentoCriterion = criteria.find((c) => c.label === "Endividamento")!
+
   const narrative: string[] = []
+
   narrative.push(
-    `A empresa apresenta liquidez corrente de ${formatRatio(liquidez)} e endividamento de ${formatPercent(
-      endividamento,
-    )} no período ${period}, com margem líquida de ${formatPercent(margem)}.`,
+    liquidezCriterion.status === "ok"
+      ? `A empresa consegue pagar suas contas de curto prazo com folga (liquidez corrente de ${formatRatio(liquidez)} — acima de 1 é positivo).`
+      : liquidezCriterion.status === "atencao"
+        ? `A empresa consegue pagar suas contas de curto prazo, mas com pouca margem (liquidez corrente de ${formatRatio(liquidez)}).`
+        : `A empresa pode ter dificuldade para pagar suas contas de curto prazo (liquidez corrente de ${formatRatio(liquidez)} — abaixo de 1 é sinal de alerta).`,
   )
+
+  narrative.push(
+    endividamentoCriterion.status === "ok"
+      ? `O nível de dívidas em relação a tudo que a empresa possui é saudável (${formatPercent(endividamento)} financiado por terceiros).`
+      : endividamentoCriterion.status === "atencao"
+        ? `O nível de dívidas em relação a tudo que a empresa possui pede atenção (${formatPercent(endividamento)} financiado por terceiros).`
+        : `O nível de dívidas em relação a tudo que a empresa possui é elevado (${formatPercent(endividamento)} financiado por terceiros).`,
+  )
+
+  narrative.push(
+    `De cada R$ 100 vendidos no período ${period}, sobram R$ ${formatBRL(margem, 2)} de lucro depois de todas as despesas e impostos.`,
+  )
+
   narrative.push(
     previousPeriod
       ? tendenciaLucro >= 0
-        ? `O lucro líquido cresceu ${formatBRL(tendenciaLucro, 1)}% frente a ${previousPeriod}, reforçando a capacidade de pagamento.`
-        : `O lucro líquido recuou ${formatBRL(Math.abs(tendenciaLucro), 1)}% frente a ${previousPeriod}, o que exige atenção na análise.`
-      : `Ainda não há período anterior tabulado para comparação de tendência.`,
+        ? `O lucro cresceu ${formatBRL(tendenciaLucro, 1)}% frente a ${previousPeriod}, o que reforça a capacidade de pagamento.`
+        : `O lucro recuou ${formatBRL(Math.abs(tendenciaLucro), 1)}% frente a ${previousPeriod}, o que exige atenção.`
+      : `Ainda não há período anterior tabulado para comparar a evolução do lucro.`,
   )
+
   if (requestedValue > 0) {
     narrative.push(
       coverage >= 1
-        ? `O valor solicitado de R$ ${formatBRL(requestedValue, 2)} está dentro do limite sugerido de R$ ${formatBRL(
-            limit,
-            2,
-          )} (cobertura de ${formatBRL(coverage, 2)}×).`
-        : `O valor solicitado de R$ ${formatBRL(requestedValue, 2)} supera o limite sugerido de R$ ${formatBRL(
-            limit,
-            2,
-          )}, com cobertura de apenas ${formatBRL(coverage, 2)}×. Recomenda-se reduzir a exposição ou reforçar garantias.`,
+        ? `O valor pedido (R$ ${formatBRL(requestedValue, 2)}) cabe dentro do que a empresa consegue sustentar com segurança (limite calculado: R$ ${formatBRL(limit, 2)}).`
+        : `O valor pedido (R$ ${formatBRL(requestedValue, 2)}) é maior do que a empresa consegue sustentar com segurança (limite calculado: R$ ${formatBRL(limit, 2)}). Recomenda-se reduzir o valor ou pedir garantias adicionais.`,
     )
   } else {
-    narrative.push(`Informe o valor da solicitação para avaliar a cobertura frente ao limite sugerido.`)
+    narrative.push(`Informe o valor pedido para saber se ele cabe dentro do que a empresa consegue sustentar com segurança.`)
   }
 
   return {

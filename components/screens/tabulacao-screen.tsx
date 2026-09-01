@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { Check, History, Plus, X } from "lucide-react"
+import { GlossaryTerm } from "@/components/glossary-term"
 import { PageHeader } from "@/components/page-header"
 import { ScaleToggle } from "@/components/scale-toggle"
 import { useFinancialStore } from "@/lib/store"
@@ -295,9 +296,14 @@ function BalancoTab({
                     style={{ paddingLeft: `${depth * 18 + 16}px` }}
                   >
                     <span className="mr-2 font-mono text-[11px] tabular-nums text-muted-foreground">{account.code}</span>
-                    <span className={cn("text-foreground", isRoot ? "font-semibold" : !isLeaf ? "font-medium" : "")}>
-                      {account.name}
-                    </span>
+                    {depth <= 1 ? (
+                      <GlossaryTerm
+                        term={account.name}
+                        className={cn("text-foreground", isRoot ? "font-semibold" : "font-medium")}
+                      />
+                    ) : (
+                      <span className={cn("text-foreground", !isLeaf ? "font-medium" : "")}>{account.name}</span>
+                    )}
                   </td>
                   <td className="px-2 py-1">
                     {isLeaf ? (

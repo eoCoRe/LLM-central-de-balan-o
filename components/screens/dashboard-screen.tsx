@@ -2,6 +2,7 @@
 
 import { useMemo } from "react"
 import { ArrowDownRight, ArrowUpRight, Droplets, Landmark, PiggyBank, Wallet, type LucideIcon } from "lucide-react"
+import { GlossaryTerm } from "@/components/glossary-term"
 import { PageHeader } from "@/components/page-header"
 import { Sparkline } from "@/components/sparkline"
 import { useFinancialStore } from "@/lib/store"
@@ -64,7 +65,7 @@ function KpiCard({
   return (
     <div className="group rounded-md border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md hover:shadow-primary/10">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+        <GlossaryTerm term={label} className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground" />
         <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
           <Icon className="size-3.5" />
         </div>

@@ -12,7 +12,7 @@ import { ExtracaoIaScreen } from "@/components/screens/extracao-ia-screen"
 import type { ScreenId } from "@/lib/navigation"
 
 export default function Page() {
-  const [screen, setScreen] = useState<ScreenId>("dashboard")
+  const [screen, setScreen] = useState<ScreenId>("opiniao-de-venda")
 
   return (
     <div className="flex min-h-dvh bg-background">
@@ -26,7 +26,7 @@ export default function Page() {
         {screen === "tabulacao" && <TabulacaoScreen />}
         {screen === "demonstracoes" && <DemonstracoesScreen />}
         {screen === "indices" && <IndicesScreen />}
-        {screen === "opiniao-de-venda" && <OpiniaoDeVendaScreen />}
+        {screen === "opiniao-de-venda" && <OpiniaoDeVendaScreen onNavigate={setScreen} />}
         {screen === "extracao-ia" && <ExtracaoIaScreen onNavigate={setScreen} />}
       </main>
     </div>

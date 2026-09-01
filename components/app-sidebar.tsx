@@ -2,7 +2,7 @@
 
 import { Search } from "lucide-react"
 import { COMPANY } from "@/lib/financial-data"
-import { PRIMARY_NAV, COMPLEMENTAR_NAV, type ScreenId } from "@/lib/navigation"
+import { INICIO_NAV, ANALISE_NAV, DETALHADO_NAV, type NavItem, type ScreenId } from "@/lib/navigation"
 import { cn } from "@/lib/utils"
 
 interface AppSidebarProps {
@@ -47,7 +47,7 @@ export function AppSidebar({ active, onNavigate }: AppSidebarProps) {
       {/* Navegação */}
       <nav className="flex-1 overflow-y-auto px-3">
         <ul className="flex flex-col gap-0.5">
-          {PRIMARY_NAV.map((item) => (
+          {INICIO_NAV.map((item) => (
             <li key={item.id}>
               <NavButton item={item} active={active === item.id} onClick={() => onNavigate(item.id)} />
             </li>
@@ -55,10 +55,21 @@ export function AppSidebar({ active, onNavigate }: AppSidebarProps) {
         </ul>
 
         <p className="px-2 pb-1 pt-5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-          Complementar
+          Análise
         </p>
         <ul className="flex flex-col gap-0.5">
-          {COMPLEMENTAR_NAV.map((item) => (
+          {ANALISE_NAV.map((item) => (
+            <li key={item.id}>
+              <NavButton item={item} active={active === item.id} onClick={() => onNavigate(item.id)} />
+            </li>
+          ))}
+        </ul>
+
+        <p className="px-2 pb-1 pt-5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          Detalhado
+        </p>
+        <ul className="flex flex-col gap-0.5">
+          {DETALHADO_NAV.map((item) => (
             <li key={item.id}>
               <NavButton item={item} active={active === item.id} onClick={() => onNavigate(item.id)} />
             </li>
@@ -87,7 +98,7 @@ function NavButton({
   active,
   onClick,
 }: {
-  item: (typeof PRIMARY_NAV)[number]
+  item: NavItem
   active: boolean
   onClick: () => void
 }) {

@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { CheckCircle2, AlertTriangle, XCircle, Gavel, FileText } from "lucide-react"
+import { ArrowRight, CheckCircle2, AlertTriangle, ChevronDown, XCircle, Gavel, FileText, Sparkles } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { useFinancialStore } from "@/lib/store"
@@ -14,6 +14,7 @@ import {
   type CriterionStatus,
   type OpinionRating,
 } from "@/lib/financial-data"
+import type { ScreenId } from "@/lib/navigation"
 import { cn } from "@/lib/utils"
 
 const STATUS_STYLES: Record<
@@ -55,7 +56,7 @@ function parseCurrency(raw: string): number {
   return digits ? Number(digits) / 100 : 0
 }
 
-export function OpiniaoDeVendaScreen() {
+export function OpiniaoDeVendaScreen({ onNavigate }: { onNavigate: (id: ScreenId) => void }) {
   const store = useFinancialStore()
   const exercicioIds = useMemo(() => store.exercicios.map((e) => e.id), [store.exercicios])
   const current = exercicioIds[exercicioIds.length - 1]
@@ -80,7 +81,25 @@ export function OpiniaoDeVendaScreen() {
   if (!opinion) {
     return (
       <div className="flex flex-col">
-        <PageHeader eyebrow="Decisão de crédito" title="Opinião de Venda" subtitle="Nenhum exercício tabulado ainda." />
+        <PageHeader eyebrow="Início" title="Parecer de Crédito" subtitle={`Nenhum exercício tabulado ainda para ${COMPANY.name}.`} />
+        <div className="px-8 py-6">
+          <div className="flex flex-col items-center gap-4 rounded-md border border-dashed border-border bg-card px-6 py-14 text-center">
+            <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
+              Para gerar o parecer automático, primeiro cadastre os valores do Balanço e da DRE de pelo menos um
+              exercício — via extração por IA ou lançamento manual na Tabulação.
+            </p>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button size="sm" className="gap-1.5" onClick={() => onNavigate("extracao-ia")}>
+                <Sparkles className="size-3.5" />
+                Extração via IA
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => onNavigate("tabulacao")}>
+                Ir para Tabulação
+                <ArrowRight className="size-3.5" />
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -91,14 +110,24 @@ export function OpiniaoDeVendaScreen() {
   return (
     <div className="flex flex-col">
       <PageHeader
-        eyebrow="Decisão de crédito"
-        title="Opinião de Venda"
+        eyebrow="Início"
+        title="Parecer de Crédito"
         subtitle={`Parecer automático para ${COMPANY.name}, com base nos indicadores de ${current}.`}
         actions={
-          <Button size="sm" className="h-8 gap-1.5">
-            <FileText className="size-3.5" />
-            Exportar parecer
-          </Button>
+          <>
+            <button
+              type="button"
+              onClick={() => onNavigate("dashboard")}
+              className="flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              Ver números completos
+              <ArrowRight className="size-3.5" />
+            </button>
+            <Button size="sm" className="h-8 gap-1.5">
+              <FileText className="size-3.5" />
+              Exportar parecer
+            </Button>
+          </>
         }
       />
 
@@ -249,9 +278,19 @@ export function OpiniaoDeVendaScreen() {
 
           <section className="rounded-md border border-border bg-muted/40 p-4">
             <p className="text-xs leading-relaxed text-muted-foreground">
-              O limite sugerido é o menor valor entre 25% do faturamento anualizado, 1,2× o Patrimônio Líquido e 3× a
-              geração de caixa operacional anual — sempre revisável pelo comitê de crédito.
+              O limite sugerido é uma estimativa de quanto essa empresa consegue pagar com segurança, calculada de
+              três formas diferentes — usamos sempre a mais conservadora. Pode ser revisado pelo comitê de crédito.
             </p>
+            <details className="group mt-2">
+              <summary className="flex cursor-pointer list-none items-center gap-1 text-[11px] text-muted-foreground/80 hover:text-foreground">
+                <ChevronDown className="size-3 shrink-0 transition-transform group-open:rotate-180" />
+                Ver como é calculado
+              </summary>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                Menor valor entre: 25% do faturamento anualizado, 1,2× o Patrimônio Líquido e 3× a geração de caixa
+                operacional anual.
+              </p>
+            </details>
           </section>
         </aside>
       </div>

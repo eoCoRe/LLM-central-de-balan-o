@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from "react"
 import { Check } from "lucide-react"
+import { GlossaryTerm } from "@/components/glossary-term"
 import { PageHeader } from "@/components/page-header"
 import { ScaleToggle } from "@/components/scale-toggle"
+import { GLOSSARY } from "@/lib/glossary"
 import { useFinancialStore } from "@/lib/store"
 import {
   DRE_LINES,
@@ -27,6 +29,13 @@ const SUB_TABS: { id: SubTab; label: string }[] = [
   { id: "dfc", label: "DFC" },
   { id: "balancete", label: "Balancete" },
 ]
+
+const SUB_TAB_SUBTITLE: Record<SubTab, string> = {
+  balanco: GLOSSARY["Balanço Patrimonial"],
+  dre: GLOSSARY.DRE,
+  dfc: GLOSSARY.DFC,
+  balancete: GLOSSARY.Balancete,
+}
 
 function TableShell({ children }: { children: React.ReactNode }) {
   return (
@@ -75,14 +84,21 @@ function BalancoTable({ accounts, exercicioIds, scale }: { accounts: Account[]; 
               )}
             >
               <td className="px-4 py-1.5" style={{ paddingLeft: `${depth * 18 + 16}px` }}>
-                <span
-                  className={cn(
-                    "text-foreground",
-                    isRoot ? "font-semibold uppercase tracking-wide" : hasChildren ? "font-medium" : "text-muted-foreground",
-                  )}
-                >
-                  {account.name}
-                </span>
+                {depth <= 1 ? (
+                  <GlossaryTerm
+                    term={account.name}
+                    className={cn(isRoot ? "font-semibold uppercase tracking-wide" : "font-medium", "text-foreground")}
+                  />
+                ) : (
+                  <span
+                    className={cn(
+                      "text-foreground",
+                      hasChildren ? "font-medium" : "text-muted-foreground",
+                    )}
+                  >
+                    {account.name}
+                  </span>
+                )}
               </td>
               {exercicioIds.map((id) => (
                 <td
@@ -260,7 +276,7 @@ export function DemonstracoesScreen() {
       <PageHeader
         eyebrow="Demonstrações consolidadas"
         title="Balanço · DRE · DFC"
-        subtitle="Visualização consolidada e somente leitura das demonstrações por período."
+        subtitle={SUB_TAB_SUBTITLE[tab]}
         actions={<ScaleToggle value={scale} onChange={setScale} />}
       />
 

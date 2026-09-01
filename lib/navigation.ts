@@ -17,15 +17,16 @@ export interface NavItem {
   badge?: string
 }
 
-export const PRIMARY_NAV: NavItem[] = [
+export const INICIO_NAV: NavItem[] = [{ id: "opiniao-de-venda", label: "Parecer de Crédito", icon: Gavel }]
+
+export const ANALISE_NAV: NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "indices", label: "Índices Financeiros", icon: Percent },
+]
+
+export const DETALHADO_NAV: NavItem[] = [
   { id: "plano-de-contas", label: "Plano de Contas", icon: ListTree },
   { id: "tabulacao", label: "Tabulação", icon: Table2 },
   { id: "demonstracoes", label: "Balanço · DRE · DFC", icon: FileSpreadsheet },
-  { id: "indices", label: "Índices Financeiros", icon: Percent },
-  { id: "opiniao-de-venda", label: "Opinião de Venda", icon: Gavel },
-]
-
-export const COMPLEMENTAR_NAV: NavItem[] = [
   { id: "extracao-ia", label: "Extração via IA", icon: Sparkles, badge: "beta" },
 ]

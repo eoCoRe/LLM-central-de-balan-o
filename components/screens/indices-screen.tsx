@@ -1,17 +1,19 @@
 "use client"
 
 import { useMemo } from "react"
-import { Info, Plus } from "lucide-react"
+import { ChevronDown, Info, Plus } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { useFinancialStore } from "@/lib/store"
 import {
   computeDre,
   formatIndicatorValue,
+  indicatorStatus,
   INDICATORS,
   makeIndicatorContext,
   type Indicator,
   type IndicatorContext,
+  type IndicatorStatus,
 } from "@/lib/financial-data"
 import { sectorBenchmarkFor, SECTORS } from "@/lib/sector-benchmarks"
 import { cn } from "@/lib/utils"
@@ -41,6 +43,88 @@ function BenchmarkChip({ indicator, comparison }: { indicator: Indicator; compar
   )
 }
 
+const STATUS_LABEL: Record<IndicatorStatus, string> = {
+  ok: "Adequado",
+  atencao: "Atenção",
+  risco: "Risco",
+  indisponivel: "Sem dados",
+}
+
+const STATUS_DOT: Record<IndicatorStatus, string> = {
+  ok: "bg-ok",
+  atencao: "bg-attention",
+  risco: "bg-risk",
+  indisponivel: "bg-muted-foreground/40",
+}
+
+function StatusBadge({ status }: { status: IndicatorStatus }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+      <span className={cn("size-2 rounded-full", STATUS_DOT[status])} aria-hidden />
+      {STATUS_LABEL[status]}
+    </span>
+  )
+}
+
+function IndicatorCard({
+  indicator,
+  lastValue,
+  status,
+  comparison,
+  benchmark,
+  exercicioIds,
+  ctxByPeriod,
+}: {
+  indicator: Indicator
+  lastValue: number | undefined
+  status: IndicatorStatus
+  comparison: BenchmarkComparison
+  benchmark: number | undefined
+  exercicioIds: string[]
+  ctxByPeriod: Record<string, IndicatorContext>
+}) {
+  return (
+    <div className="rounded-md border border-border bg-card p-4">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm font-medium text-foreground">{indicator.name}</p>
+        <StatusBadge status={status} />
+      </div>
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{indicator.description}</p>
+      <div className="mt-2 flex items-baseline gap-2">
+        <span className="font-mono text-xl font-semibold tabular-nums text-foreground">
+          {formatIndicatorValue(indicator, lastValue)}
+        </span>
+        <BenchmarkChip indicator={indicator} comparison={comparison} />
+      </div>
+      <details className="group mt-3 border-t border-border pt-2.5">
+        <summary className="flex cursor-pointer list-none items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+          <ChevronDown className="size-3.5 shrink-0 transition-transform group-open:rotate-180" />
+          Ver fórmula e histórico
+        </summary>
+        <div className="mt-2.5 flex flex-col gap-2">
+          <code className="block rounded border border-border bg-muted/60 px-2 py-1.5 font-mono text-[11px] leading-relaxed text-muted-foreground">
+            {indicator.formula}
+          </code>
+          <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+            {exercicioIds.map((id) => (
+              <div key={id} className="flex items-center gap-1.5">
+                <dt className="text-muted-foreground">{id}</dt>
+                <dd className="font-mono tabular-nums text-foreground">
+                  {formatIndicatorValue(indicator, indicator.compute(ctxByPeriod[id]))}
+                </dd>
+              </div>
+            ))}
+            <div className="flex items-center gap-1.5">
+              <dt className="text-muted-foreground">Média do setor</dt>
+              <dd className="font-mono tabular-nums text-foreground">{formatIndicatorValue(indicator, benchmark)}</dd>
+            </div>
+          </dl>
+        </div>
+      </details>
+    </div>
+  )
+}
+
 export function IndicesScreen() {
   const store = useFinancialStore()
   const exercicioIds = useMemo(() => store.exercicios.map((e) => e.id), [store.exercicios])
@@ -53,6 +137,16 @@ export function IndicesScreen() {
     }
     return out
   }, [exercicioIds, store.accounts, store.dreByExercicio])
+
+  const groups = useMemo(() => {
+    const out: { group: Indicator["group"]; items: Indicator[] }[] = []
+    for (const indicator of INDICATORS) {
+      const last = out[out.length - 1]
+      if (last && last.group === indicator.group) last.items.push(indicator)
+      else out.push({ group: indicator.group, items: [indicator] })
+    }
+    return out
+  }, [])
 
   return (
     <div className="flex flex-col">
@@ -85,71 +179,32 @@ export function IndicesScreen() {
         }
       />
 
-      <div className="flex flex-col gap-5 px-8 py-6">
-        <div className="overflow-x-auto rounded-md border border-border bg-card">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="px-4 py-2.5 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                  Nome
-                </th>
-                <th className="px-4 py-2.5 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                  Fórmula
-                </th>
-                <th className="px-4 py-2.5 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                  Grupo
-                </th>
-                {exercicioIds.map((id) => (
-                  <th
-                    key={id}
-                    className="w-28 px-4 py-2.5 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
-                  >
-                    {id}
-                  </th>
-                ))}
-                <th className="w-28 px-4 py-2.5 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                  Média do Setor
-                </th>
-                <th className="w-36 px-4 py-2.5 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                  Vs. Setor ({lastPeriod ?? "—"})
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {INDICATORS.map((indicator) => {
+      <div className="flex flex-col gap-6 px-8 py-6">
+        {groups.map(({ group, items }) => (
+          <section key={group} className="flex flex-col gap-3">
+            <h2 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{group}</h2>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {items.map((indicator) => {
                 const benchmark = sectorBenchmarkFor(store.sectorId, indicator.id)
                 const lastValue = lastPeriod ? indicator.compute(ctxByPeriod[lastPeriod]) : undefined
                 const comparison = compareToBenchmark(indicator, lastValue, benchmark)
+                const status = indicatorStatus(indicator, lastValue)
                 return (
-                  <tr key={indicator.id} className="border-b border-border last:border-0 align-top">
-                    <td className="px-4 py-3 font-medium text-foreground">{indicator.name}</td>
-                    <td className="px-4 py-3">
-                      <code className="rounded border border-border bg-muted/60 px-1.5 py-0.5 font-mono text-xs leading-relaxed text-muted-foreground">
-                        {indicator.formula}
-                      </code>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex rounded border border-border px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                        {indicator.group}
-                      </span>
-                    </td>
-                    {exercicioIds.map((id) => (
-                      <td key={id} className="px-4 py-3 text-right font-mono tabular-nums text-foreground">
-                        {formatIndicatorValue(indicator, indicator.compute(ctxByPeriod[id]))}
-                      </td>
-                    ))}
-                    <td className="px-4 py-3 text-right font-mono tabular-nums text-muted-foreground">
-                      {formatIndicatorValue(indicator, benchmark)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <BenchmarkChip indicator={indicator} comparison={comparison} />
-                    </td>
-                  </tr>
+                  <IndicatorCard
+                    key={indicator.id}
+                    indicator={indicator}
+                    lastValue={lastValue}
+                    status={status}
+                    comparison={comparison}
+                    benchmark={benchmark}
+                    exercicioIds={exercicioIds}
+                    ctxByPeriod={ctxByPeriod}
+                  />
                 )
               })}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          </section>
+        ))}
 
         {/* Dica */}
         <div className="flex items-start gap-3 rounded-md border border-border bg-muted/40 p-4">
